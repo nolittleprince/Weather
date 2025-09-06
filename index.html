@@ -1,0 +1,470 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>yestodmorrow kk — Yesterday · Today · Tomorrow</title>
+  <style>
+    :root{
+      --bg:#ffffff; --fg:#0b1020; --muted:#697387; --line:#e6e9ef; --card:#f7f9fc;
+      --up:#ef4444; --down:#10b981; --same:#9aa3b2; --accent:#2563eb;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0}
+    body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,"Apple SD Gothic Neo","Noto Sans KR","Noto Sans JP",sans-serif;background:var(--bg);color:var(--fg)}
+    .wrap{height:100vh;display:grid;grid-template-rows:auto 1fr auto;max-width:780px;margin:0 auto;padding:14px;gap:10px}
+    header,footer{display:flex;align-items:center;justify-content:space-between}
+    header .brand{display:flex;align-items:center;gap:8px}
+    .badge{border:1px solid var(--line);padding:2px 8px;border-radius:999px;font-size:12px;color:var(--accent)}
+    .loc{font-weight:700}
+    .muted{color:var(--muted)}
+    .small{font-size:12px}
+    .btn{border:1px solid var(--line);background:#fff;padding:6px 10px;border-radius:8px;font-size:12px;cursor:pointer}
+    .lang button{border:1px solid var(--line);background:#fff;padding:6px 10px;border-radius:999px;font-size:12px;margin-left:6px;cursor:pointer}
+    .lang button.active{border-color:var(--accent);color:var(--accent);font-weight:700}
+    main{display:grid;grid-template-rows:auto auto 1fr;gap:10px;overflow:auto}
+    .headline{border:1px solid var(--line);border-radius:12px;padding:12px;background:#fff;font-size:16px;line-height:1.4}
+    .cards{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px}
+    .card h3{margin:0 0 4px 0;font-size:12px;color:var(--muted);font-weight:700}
+    .big{font-size:28px;font-weight:800}
+    .row{display:flex;justify-content:space-between;font-size:14px}
+    .delta.up{color:var(--up)} .delta.down{color:var(--down)} .delta.same{color:var(--same)}
+    .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+    .slot{border:1px dashed var(--line);border-radius:12px;padding:10px;background:#fff}
+    .slot h4{margin:0 0 6px 0;font-size:12px;color:var(--muted)}
+    .slot .line{font-size:14px}
+    .tips{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .pill{border:1px solid var(--line);background:#fff;padding:6px 10px;border-radius:999px;font-size:12px}
+    footer .right{display:flex;align-items:center;gap:8px}
+    a { color: inherit; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="brand">
+        <span class="badge">yestodmorrow kk</span>
+        <div>
+          <div class="loc" id="locText">Seoul</div>
+          <div class="muted small" id="timeText"></div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <button class="btn" id="locBtn">📍 위치 재설정</button>
+        <div class="lang">
+          <button data-lang="ko" class="active">KO</button>
+          <button data-lang="en">EN</button>
+          <button data-lang="ja">JA</button>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <!-- Headline 1: Today vs Yesterday -->
+      <div class="headline" id="headline1">불러오는 중…</div>
+      <!-- Headline 2: Tomorrow vs Today -->
+      <div class="headline" id="headline2">내일 미리보기 불러오는 중…</div>
+
+      <!-- Cards: Yesterday vs Now -->
+      <div class="cards">
+        <div class="card">
+          <h3 id="yTitle">어제 이 시간</h3>
+          <div class="big" id="yTemp">—</div>
+          <div class="row"><span id="yRainLbl">강수</span><span id="yRain">—</span></div>
+          <div class="row"><span id="yWindLbl">바람</span><span id="yWind">—</span></div>
+        </div>
+        <div class="card">
+          <h3 id="tTitle">오늘 지금</h3>
+          <div class="big" id="tTemp">— <span class="delta same" id="tTempDelta">≈0°C</span></div>
+          <div class="row"><span id="tRainLbl">강수</span><span id="tRain">— <span class="delta same" id="tRainDelta"></span></span></div>
+          <div class="row"><span id="tWindLbl">바람</span><span id="tWind">— <span class="delta same" id="tWindDelta"></span></span></div>
+        </div>
+      </div>
+
+      <!-- Slots: AM/Noon/Eve for Today; Tomorrow preview line below -->
+      <div class="grid3">
+        <div class="slot">
+          <h4 id="amLbl">아침(6–9)</h4>
+          <div class="line" id="amLine">—</div>
+          <div class="small muted" id="amTom">내일: —</div>
+        </div>
+        <div class="slot">
+          <h4 id="noonLbl">점심(12–15)</h4>
+          <div class="line" id="noonLine">—</div>
+          <div class="small muted" id="noonTom">내일: —</div>
+        </div>
+        <div class="slot">
+          <h4 id="eveLbl">저녁(18–21)</h4>
+          <div class="line" id="eveLine">—</div>
+          <div class="small muted" id="eveTom">내일: —</div>
+        </div>
+      </div>
+    </main>
+
+    <footer>
+      <div class="tips">
+        <span class="pill" id="tip1">☂ 우산 필요 없음</span>
+        <span class="pill" id="tip2">🧥 겉옷 선택</span>
+        <span class="pill" id="tip3">☀ 자외선 주의</span>
+      </div>
+      <div class="right small muted">Data: Open-Meteo • yestodmorrow kk v0.2</div>
+    </footer>
+  </div>
+
+  <script>
+    // ===== 쉬운 용어 =====
+    // API: 데이터를 제공하는 서버의 주소(전화번호).
+    // JSON: 표 형태의 텍스트 데이터 포맷.
+    // fetch(): 자바스크립트로 API에서 데이터를 가져오는 명령.
+    // timezone=auto: 현지 시간대로 자동 변환.
+    const texts = {
+      ko: {
+        yTitle: "어제 이 시간",
+        tTitle: "오늘 지금",
+        am: "아침(6–9)", noon: "점심(12–15)", eve: "저녁(18–21)",
+        rain: "강수", wind: "바람",
+        head1: (dT, rainMsg, windMsg)=> `오늘은 어제보다 ${tempPhrase(dT,'ko')}${rainMsg? " · "+rainMsg:""}${windMsg? " · "+windMsg:""}`,
+        head2: (dT, rainMsg, windMsg)=> `내일은 오늘보다 ${tempPhrase(dT,'ko')}${rainMsg? " · "+rainMsg:""}${windMsg? " · "+windMsg:""}`,
+        tips: { noUmb:"☂ 우산 필요 없음", takeUmb:"☂ 우산 챙기기", outerMaybe:"🧥 겉옷 선택", outerNeed:"🧥 겉옷 필요", uv:"☀ 자외선 주의" },
+        resetLoc:"📍 위치 재설정",
+        loading:"불러오는 중…",
+        loading2:"내일 미리보기 불러오는 중…"
+      },
+      en: {
+        yTitle: "This hour yesterday",
+        tTitle: "Now today",
+        am: "Morning (6–9)", noon: "Noon (12–15)", eve: "Evening (18–21)",
+        rain: "Precip", wind: "Wind",
+        head1: (dT, rainMsg, windMsg)=> `Today feels ${tempPhrase(dT,'en')}${rainMsg? " · "+rainMsg:""}${windMsg? " · "+windMsg:""}`,
+        head2: (dT, rainMsg, windMsg)=> `Tomorrow will feel ${tempPhrase(dT,'en')}${rainMsg? " · "+rainMsg:""}${windMsg? " · "+windMsg:""}`,
+        tips: { noUmb:"☂ No umbrella", takeUmb:"☂ Take umbrella", outerMaybe:"🧥 Light layer optional", outerNeed:"🧥 Bring a jacket", uv:"☀ UV caution" },
+        resetLoc:"📍 Reset location",
+        loading:"Loading…", loading2:"Loading tomorrow…"
+      },
+      ja: {
+        yTitle: "昨日のこの時間",
+        tTitle: "今日・今",
+        am: "朝(6–9)", noon: "昼(12–15)", eve: "夕(18–21)",
+        rain: "降水", wind: "風",
+        head1: (dT, rainMsg, windMsg)=> `今日は昨日より${tempPhrase(dT,'ja')}${rainMsg? "・"+rainMsg:""}${windMsg? "・"+windMsg:""}`,
+        head2: (dT, rainMsg, windMsg)=> `明日は今日より${tempPhrase(dT,'ja')}${rainMsg? "・"+rainMsg:""}${windMsg? "・"+windMsg:""}`,
+        tips: { noUmb:"☂ 傘不要", takeUmb:"☂ 傘を持つ", outerMaybe:"🧥 上着はお好みで", outerNeed:"🧥 上着が必要", uv:"☀ 紫外線注意" },
+        resetLoc:"📍 再設定",
+        loading:"読み込み中…", loading2:"明日の読み込み中…"
+      }
+    };
+    let LANG='ko';
+    const $ = (id)=>document.getElementById(id);
+    const ui = {
+      locText:$("locText"), timeText:$("timeText"),
+      headline1:$("headline1"), headline2:$("headline2"),
+      yTitle:$("yTitle"), tTitle:$("tTitle"),
+      yTemp:$("yTemp"), yRain:$("yRain"), yWind:$("yWind"),
+      tTemp:$("tTemp"), tRain:$("tRain"), tWind:$("tWind"),
+      tTempDelta:$("tTempDelta"), tRainDelta:$("tRainDelta"), tWindDelta:$("tWindDelta"),
+      amLbl:$("amLbl"), noonLbl:$("noonLbl"), eveLbl:$("eveLbl"),
+      amLine:$("amLine"), noonLine:$("noonLine"), eveLine:$("eveLine"),
+      amTom:$("amTom"), noonTom:$("noonTom"), eveTom:$("eveTom"),
+      tip1:$("tip1"), tip2:$("tip2"), tip3:$("tip3"),
+      locBtn:$("locBtn")
+    };
+
+    document.querySelectorAll('.lang button').forEach(btn=>{
+      btn.addEventListener('click',()=>{
+        document.querySelectorAll('.lang button').forEach(b=>b.classList.remove('active'));
+        btn.classList.add('active');
+        LANG = btn.dataset.lang;
+        renderTextsOnly();
+      });
+    });
+
+    ui.locBtn.addEventListener('click', ()=>{
+      navigator.geolocation.getCurrentPosition(async pos=>{
+        await loadAll(pos.coords.latitude, pos.coords.longitude, true);
+      }, async err=>{
+        alert(LANG==='ko'?'위치 권한 실패. 서울로 표시합니다.':LANG==='ja'?'位置情報の許可に失敗しました。ソウルを表示します。':'Location permission failed. Falling back to Seoul.');
+        await loadAll(37.5665,126.9780,true);
+      }, {enableHighAccuracy:false, timeout:4000});
+    });
+
+    // ====== 유틸 ======
+    function tempPhrase(dT, lang='ko'){
+      if (dT==null) return '';
+      const abs = Math.abs(dT);
+      if (abs < 1) return lang==='en'?'about the same':(lang==='ja'?'ほぼ同じ':'거의 같음');
+      if (dT >= 1 && dT < 3) return (lang==='en'?'a bit ':'약간 ') + (lang==='ja'?'暖かい':'더 따뜻');
+      if (dT >= 3) return lang==='en'?'warmer':(lang==='ja'?'暖かい':'더 따뜻');
+      if (dT <= -1 && dT > -3) return (lang==='en'?'a bit ':'약간 ') + (lang==='ja'?'涼しい':'서늘');
+      return lang==='en'?'cooler':(lang==='ja'?'涼しい':'서늘');
+    }
+    function fmtTemp(v){ return (v!=null && isFinite(v)) ? `${Math.round(v)}°C` : '—'; }
+    function fmtMs(v){ return (v!=null && isFinite(v)) ? `${Math.round(v)} m/s` : '—'; }
+    function fmtMm(v){ if (v==null || !isFinite(v)) return '—'; if (v < 0.1) return '0 mm'; return `${(Math.round(v*10)/10).toFixed(1)} mm`; }
+    function fmtPop(v){ if (v==null || !isFinite(v)) return '—'; return `${Math.round(v)}%`; }
+    function nearestIndex(times, target){
+      let best = 0, bestDiff = Infinity;
+      for (let i=0;i<times.length;i++){
+        const d = Math.abs(new Date(times[i]).getTime() - target.getTime());
+        if (d<bestDiff){best=i;bestDiff=d;}
+      }
+      return best;
+    }
+    function avgForHours(values, times, dateBase, hours){
+      const y = dateBase.getFullYear();
+      const m = (dateBase.getMonth()+1).toString().padStart(2,'0');
+      const d = dateBase.getDate().toString().padStart(2,'0');
+      const prefix = `${y}-${m}-${d}T`;
+      let acc=0, cnt=0;
+      for (const h of hours){
+        const key = `${prefix}${h.toString().padStart(2,'0')}:00`;
+        const idx = times.indexOf(key);
+        if (idx>=0 && values[idx]!=null){ acc += values[idx]; cnt++; }
+      }
+      return cnt? acc/cnt : null;
+    }
+    function setDeltaEl(el, val, unit){
+      if (!el) return;
+      const cls = (Math.abs(val) < (unit==='m/s'?1.5: unit==='mm'?0.2:1)) ? 'same' : (val>0?'up':'down');
+      el.className = 'delta ' + cls;
+      const sign = val>0?'+':'';
+      const rounded = (unit==='mm') ? (Math.round(val*10)/10).toFixed(1) : Math.round(val);
+      el.textContent = `${sign}${rounded}${unit}`;
+    }
+
+    // ====== 상태 ======
+    let ST = {
+      lat: 37.5665, lon: 126.9780,
+      locName: 'Seoul',
+      tz: 'Asia/Seoul',
+      now: new Date(),
+      time: [],
+      series: null,
+      today: null, yesterday: null, tomorrow: null,
+      deltasNow: null, deltasTomorrow: null
+    };
+
+    async function reverseGeocode(lat, lon){
+      try{
+        const url = `https://geocoding-api.open-meteo.com/v1/reverse?latitude=${lat}&longitude=${lon}&language=${LANG}&format=json`;
+        const r = await fetch(url); const j = await r.json();
+        if (j && j.results && j.results.length){
+          const top = j.results[0];
+          const parts = [top.city || top.name, top.admin1, top.country_code].filter(Boolean);
+          return parts.join(', ');
+        }
+      }catch(e){}
+      return 'Unknown';
+    }
+
+    function summarizeForDate(dateObj){
+      const H = ST.series; const time = ST.time;
+      const slots = {
+        am:[6,7,8,9], noon:[12,13,14,15], eve:[18,19,20,21]
+      };
+      const out = {};
+      for (const [key, hours] of Object.entries(slots)){
+        out[key] = {
+          temp: avgForHours(H.temp, time, dateObj, hours),
+          feels: avgForHours(H.feels, time, dateObj, hours),
+          pop: avgForHours(H.pop, time, dateObj, hours),
+          rain: avgForHours(H.rain, time, dateObj, hours),
+          wind: avgForHours(H.wind, time, dateObj, hours),
+        };
+      }
+      // now ±1h
+      const now = ST.now;
+      let accT=0,cntT=0, accF=0,cntF=0, accP=0,cntP=0, accR=0,cntR=0, accW=0,cntW=0;
+      for (let i=0;i<time.length;i++){
+        const t = new Date(time[i]);
+        if (t.toDateString()!==dateObj.toDateString()) continue;
+        const diffH = Math.abs((t.getTime()-now.getTime())/3600000);
+        if (diffH<=1){ 
+          if (H.temp[i]!=null){accT+=H.temp[i]; cntT++;}
+          if (H.feels[i]!=null){accF+=H.feels[i]; cntF++;}
+          if (H.pop[i]!=null){accP+=H.pop[i]; cntP++;}
+          if (H.rain[i]!=null){accR+=H.rain[i]; cntR++;}
+          if (H.wind[i]!=null){accW+=H.wind[i]; cntW++;}
+        }
+      }
+      out.now = {
+        temp: cntT? accT/cntT : null,
+        feels: cntF? accF/cntF : null,
+        pop: cntP? accP/cntP : null,
+        rain: cntR? accR/cntR : null,
+        wind: cntW? accW/cntW : null,
+      };
+      return out;
+    }
+
+    function delta(a,b){ if (a==null || b==null) return null; return +(b-a).toFixed(1); }
+
+    function computeHeadDelta(yToday, yOther){
+      const a = yToday.now?.feels ?? yToday.now?.temp;
+      const b = yOther.now?.feels ?? yOther.now?.temp;
+      return delta(a,b);
+    }
+
+    function computeTips(summary){
+      const umbrella = (summary.morning?.rain ?? 0) + (summary.noon?.rain ?? 0) + (summary.eve?.rain ?? 0) > 0.5
+        || (summary.morning?.pop ?? 0) > 60 || (summary.noon?.pop ?? 0) > 60 || (summary.eve?.pop ?? 0) > 60;
+      const jacket = (summary.morning?.feels ?? 20) < 18 || (summary.eve?.feels ?? 20) < 18;
+      const uv = (summary.noon?.temp ?? 20) > 24 && (summary.noon?.pop ?? 0) < 50;
+      return { umbrella, jacket, uv };
+    }
+
+    async function loadAll(lat, lon){
+      ST.lat = lat; ST.lon = lon; ST.now = new Date();
+
+      ui.headline1.textContent = texts[LANG].loading;
+      ui.headline2.textContent = texts[LANG].loading2;
+
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}`+
+        `&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,wind_speed_10m`+
+        `&past_days=1&forecast_days=2&timezone=auto`;
+      const res = await fetch(url);
+      const f = await res.json();
+
+      ST.time = f.hourly.time;
+      ST.series = {
+        temp: f.hourly.temperature_2m,
+        feels: f.hourly.apparent_temperature,
+        pop: f.hourly.precipitation_probability,
+        rain: f.hourly.precipitation,
+        wind: f.hourly.wind_speed_10m
+      };
+
+      const now = ST.now;
+      const yday = new Date(now.getTime()-24*60*60*1000);
+      const tmr = new Date(now.getTime()+24*60*60*1000);
+
+      ST.yesterday = summarizeForDate(yday);
+      ST.today = summarizeForDate(now);
+      ST.tomorrow = summarizeForDate(tmr);
+
+      ST.locName = await reverseGeocode(lat, lon);
+
+      renderAll();
+    }
+
+    function renderTextsOnly(){
+      ui.yTitle.textContent = texts[LANG].yTitle;
+      ui.tTitle.textContent = texts[LANG].tTitle;
+      ui.amLbl.textContent = texts[LANG].am;
+      ui.noonLbl.textContent = texts[LANG].noon;
+      ui.eveLbl.textContent = texts[LANG].eve;
+      ui.locBtn.textContent = texts[LANG].resetLoc;
+
+      // 재계산된 헤드라인
+      if (ST.today && ST.yesterday){
+        const d1 = computeHeadDelta(ST.yesterday, ST.today);
+        const rainMsg1 = headRainMsg(ST.yesterday.now, ST.today.now);
+        const windMsg1 = headWindMsg(ST.yesterday.now, ST.today.now);
+        ui.headline1.textContent = texts[LANG].head1(d1, rainMsg1, windMsg1);
+      }
+      if (ST.today && ST.tomorrow){
+        const d2 = computeHeadDelta(ST.today, ST.tomorrow);
+        const rainMsg2 = headRainMsg(ST.today.now, ST.tomorrow.now);
+        const windMsg2 = headWindMsg(ST.today.now, ST.tomorrow.now);
+        ui.headline2.textContent = texts[LANG].head2(d2, rainMsg2, windMsg2);
+      }
+      ui.locText.textContent = ST.locName || 'Unknown';
+      ui.timeText.textContent = new Date().toLocaleString();
+      renderTips();
+    }
+
+    function headRainMsg(a,b){
+      if (!a || !b) return null;
+      const popA = a.pop ?? 0, popB = b.pop ?? 0;
+      const diff = popB - popA;
+      if (Math.abs(diff) < 10) return LANG==='en'?'rain similar':(LANG==='ja'?'雨 ほぼ同じ':'비 비슷');
+      return diff>0 ? (LANG==='en'?'rain chance ↑':(LANG==='ja'?'雨の可能性↑':'비 가능성 ↑'))
+                    : (LANG==='en'?'rain chance ↓':(LANG==='ja'?'雨の可能性↓':'비 가능성 ↓'));
+    }
+    function headWindMsg(a,b){
+      if (!a || !b) return null;
+      const diff = (b.wind ?? 0) - (a.wind ?? 0);
+      if (Math.abs(diff) < 1.5) return null;
+      return diff>0 ? (LANG==='en'?'windier':(LANG==='ja'?'風が強まる':'바람 강해짐'))
+                    : (LANG==='en'?'calmer':(LANG==='ja'?'風が弱まる':'바람 약해짐'));
+    }
+
+    function renderAll(){
+      renderTextsOnly();
+
+      // 현재시간 표기
+      ui.timeText.textContent = new Date().toLocaleString();
+
+      // 어제 카드
+      ui.yTemp.textContent = fmtTemp(ST.yesterday.now?.feels ?? ST.yesterday.now?.temp);
+      ui.yRain.textContent = (ST.yesterday.now?.pop!=null) ? fmtPop(ST.yesterday.now.pop) : fmtMm(ST.yesterday.now?.rain);
+      ui.yWind.textContent = fmtMs(ST.yesterday.now?.wind);
+
+      // 오늘 카드(+델타: 오늘-어제)
+      const dTempNow = delta(ST.yesterday.now?.feels ?? ST.yesterday.now?.temp, ST.today.now?.feels ?? ST.today.now?.temp) ?? 0;
+      const dRainNow = delta(ST.yesterday.now?.rain ?? 0, ST.today.now?.rain ?? 0) ?? 0;
+      const dWindNow = delta(ST.yesterday.now?.wind ?? 0, ST.today.now?.wind ?? 0) ?? 0;
+
+      ui.tTemp.innerHTML = `${fmtTemp(ST.today.now?.feels ?? ST.today.now?.temp)} <span id="tTempDelta" class="delta same">—</span>`;
+      ui.tRain.innerHTML = `${(ST.today.now?.pop!=null)? fmtPop(ST.today.now.pop) : fmtMm(ST.today.now?.rain)} <span id="tRainDelta" class="delta same"></span>`;
+      ui.tWind.innerHTML = `${fmtMs(ST.today.now?.wind)} <span id="tWindDelta" class="delta same"></span>`;
+
+      ui.tTempDelta = document.getElementById('tTempDelta');
+      ui.tRainDelta = document.getElementById('tRainDelta');
+      ui.tWindDelta = document.getElementById('tWindDelta');
+
+      setDeltaEl(ui.tTempDelta, dTempNow, "°C");
+      setDeltaEl(ui.tRainDelta, dRainNow, "mm");
+      setDeltaEl(ui.tWindDelta, dWindNow, "m/s");
+
+      // 슬롯(오늘) + 내일 미리보기 텍스트
+      function slotLine(y, t){
+        const dT = delta(y?.feels ?? y?.temp, t?.feels ?? t?.temp);
+        const rainTxt = (t?.pop!=null) ? `POP ${fmtPop(t.pop)}` : `RAIN ${fmtMm(t?.rain)}`;
+        const windD = delta(y?.wind, t?.wind);
+        const tempTxt = dT!=null ? `ΔT ${dT>0?'+':''}${Math.round(dT)}°C` : 'ΔT —';
+        const windTxt = windD!=null ? `ΔW ${windD>0?'+':''}${Math.round(windD)} m/s` : 'ΔW —';
+        return `${tempTxt} · ${rainTxt} · ${windTxt}`;
+      }
+      ui.amLine.textContent = slotLine(ST.yesterday.am, ST.today.am);
+      ui.noonLine.textContent = slotLine(ST.yesterday.noon, ST.today.noon);
+      ui.eveLine.textContent = slotLine(ST.yesterday.eve, ST.today.eve);
+
+      function tomLine(t, tm){
+        const dT = delta(t?.feels ?? t?.temp, tm?.feels ?? tm?.temp);
+        const rainTxt = (tm?.pop!=null) ? `POP ${fmtPop(tm.pop)}` : `RAIN ${fmtMm(tm?.rain)}`;
+        return (dT!=null ? `ΔT ${dT>0?'+':''}${Math.round(dT)}°C` : 'ΔT —') + ` · ${rainTxt}`;
+      }
+      ui.amTom.textContent = (LANG==='en'?'Tomorrow: ':(LANG==='ja'?'明日: ':'내일: ')) + tomLine(ST.today.am, ST.tomorrow.am);
+      ui.noonTom.textContent = (LANG==='en'?'Tomorrow: ':(LANG==='ja'?'明日: ':'내일: ')) + tomLine(ST.today.noon, ST.tomorrow.noon);
+      ui.eveTom.textContent = (LANG==='en'?'Tomorrow: ':(LANG==='ja'?'明日: ':'내일: ')) + tomLine(ST.today.eve, ST.tomorrow.eve);
+
+      renderTips();
+    }
+
+    function renderTips(){
+      const tipToday = computeTips(ST.today);
+      ui.tip1.textContent = tipToday.umbrella ? texts[LANG].tips.takeUmb : texts[LANG].tips.noUmb;
+      ui.tip2.textContent = tipToday.jacket ? texts[LANG].tips.outerNeed : texts[LANG].tips.outerMaybe;
+      ui.tip3.textContent = texts[LANG].tips.uv;
+    }
+
+    // 시작: 위치 권한 → 로드, 실패 시 서울
+    (async function start(){
+      try{
+        await new Promise((resolve)=>{
+          navigator.geolocation.getCurrentPosition(async pos=>{
+            await loadAll(pos.coords.latitude, pos.coords.longitude);
+            resolve();
+          }, async _=>{
+            await loadAll(37.5665,126.9780); // Seoul fallback
+            resolve();
+          }, {enableHighAccuracy:false, timeout:4000});
+        });
+      }catch(e){
+        await loadAll(37.5665,126.9780);
+      }
+    })();
+  </script>
+</body>
+</html>
