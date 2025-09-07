@@ -2,31 +2,24 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <title>JIGI v0.5.5</title>
+  <title>JIGI v0.5.6</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    :root{
-      --primary:#1976D2; --text:#232323; --muted:#9E9E9E; --bg:#FFFFFF;
-      --chip:#F2F6FA; --ad:#E0E0E0;
-    }
+    :root{ --primary:#1976D2; --text:#232323; --muted:#9E9E9E; --bg:#FFFFFF; --chip:#F2F6FA; --ad:#E0E0E0; }
     *{box-sizing:border-box}
-    body{
-      margin:0; background:var(--bg); color:var(--text);
-      font-family:Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
-      display:flex; flex-direction:column; align-items:center; min-height:100svh;
-    }
+    body{ margin:0; background:var(--bg); color:var(--text); font-family:Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; display:flex; flex-direction:column; align-items:center; min-height:100svh;}
     header{ width:100%; padding:18px 20px 8px; text-align:center; position:relative }
     h1{ margin:0; font-size:24px; color:var(--primary) }
     #settingsBtn{ position:absolute; right:16px; top:16px; background:none; border:none; font-size:20px; cursor:pointer }
-    .headline{ width:92%; max-width:720px; margin:10px auto 0; font-size:17px; line-height:1.5; text-align:left; }
+    .headline{ width:92%; max-width:720px; margin:10px auto 0; font-size:17px; line-height:1.5; text-align:left; min-height:52px }
     .wrap{ width:100%; max-width:720px; display:flex; flex-direction:column; align-items:center }
     .toolbar{ width:92%; display:flex; justify-content:space-between; align-items:center; gap:8px; margin:10px 0 6px }
-    .loc{ font-size:12px; color:#666 }
-    .btn{ padding:8px 10px; border:none; border-radius:10px; background:#EEF4FF; color:var(--primary); font-weight:600; font-size:12px }
+    .loc{ font-size:12px; color:#666; min-height:18px }
+    .btn{ padding:8px 10px; border:none; border-radius:10px; background:#EEF4FF; color:var(--primary); font-weight:600; font-size:12px; cursor:pointer }
     .toggle{ display:inline-flex; background:#EFF3F9; border-radius:12px; padding:2px; gap:2px }
-    .tgbtn{ border:none; background:transparent; padding:6px 10px; border-radius:10px; font-size:12px; color:#555 }
+    .tgbtn{ border:none; background:transparent; padding:6px 10px; border-radius:10px; font-size:12px; color:#555; cursor:pointer }
     .tgbtn.active{ background:#fff; color:#000; box-shadow:0 1px 3px rgba(0,0,0,0.08) }
-    .chips{ display:flex; gap:8px; margin:10px 0 2px; padding:0 16px; flex-wrap:wrap; justify-content:flex-start; width:92% }
+    .chips{ display:flex; gap:8px; margin:10px 0 2px; padding:0 16px; flex-wrap:wrap; justify-content:flex-start; width:92%; min-height:36px }
     .chip{ padding:8px 12px; border-radius:16px; background:var(--chip); color:var(--text); font-size:14px }
     .chip.active{ background:var(--primary); color:#fff }
     #chart-wrap{ width:92%; height:160px; margin:8px 0 }
@@ -40,6 +33,11 @@
     #settingsPanel label{ display:block; margin:10px 0 4px; font-size:13px; font-weight:600 }
     #settingsPanel select{ width:100%; padding:6px; font-size:13px; margin-bottom:12px }
     #settingsPanel .info{ font-size:12px; color:#555; margin-top:12px }
+    /* Skeletons */
+    .skeleton{ background: linear-gradient(90deg, #eee 25%, #f6f6f6 37%, #eee 63%); background-size: 400% 100%; animation: shimmer 1.2s infinite; border-radius:8px }
+    @keyframes shimmer{ 0%{background-position:100% 0} 100%{background-position:-100% 0} }
+    .sk-head{ width:92%; height:48px; margin-top:10px }
+    .retry{ display:none; margin:8px 0; }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
@@ -49,7 +47,7 @@
     <h1>JIGI</h1>
     <button id="settingsBtn">⚙️</button>
   </header>
-  <div class="headline" id="headline">오늘의 느낌을 정리하고 있어요…</div>
+  <div class="headline" id="headline"><span class="skeleton sk-head"></span></div>
 
   <div class="wrap">
     <div class="toolbar">
@@ -66,6 +64,7 @@
     <div id="chart-wrap">
       <canvas id="weatherChart"></canvas>
     </div>
+    <button id="retryBtn" class="btn retry">다시 시도</button>
   </div>
 
   <div class="ad">Ad banner (320×100)</div>
@@ -88,7 +87,7 @@
     </select>
     <div class="info">
       <p><b>앱 이름</b>: JIGI</p>
-      <p><b>버전</b>: v0.5.5</p>
+      <p><b>버전</b>: v0.5.6</p>
       <p><b>만든 사람</b>: 류재영</p>
       <p><b>이메일</b>: nolittleprince@gmail.com</p>
       <p><b>Instagram</b>: @nolittle.prince</p>
@@ -98,42 +97,195 @@
 <script>
 const state = { view:'today', data:null, lang:'ko', tone:'friend', locationName:'' };
 const toast = (msg)=>{ const el=document.getElementById('toast'); el.textContent=msg; el.style.display='block'; setTimeout(()=>el.style.display='none',2400); };
+
+// ---------- Utils ----------
 function fmt(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
 function getDates(){ const now=new Date(); const today=new Date(now.getFullYear(),now.getMonth(),now.getDate()); const yest=new Date(today); yest.setDate(yest.getDate()-1); const tomo=new Date(today); tomo.setDate(tomo.getDate()+1); return {today:fmt(today), yesterday:fmt(yest), tomorrow:fmt(tomo)}; }
-async function fetchWeather(lat, lon){ const {today,tomorrow,yesterday}=getDates(); const base="https://api.open-meteo.com/v1/forecast"; const paramsTD=new URLSearchParams({latitude:lat,longitude:lon,hourly:"temperature_2m,dewpoint_2m,windspeed_10m,precipitation_probability,uv_index",daily:"uv_index_max,temperature_2m_max,temperature_2m_min",timezone:"auto",start_date:today,end_date:tomorrow}); const paramsY=new URLSearchParams({latitude:lat,longitude:lon,hourly:"temperature_2m",timezone:"auto",start_date:yesterday,end_date:yesterday}); const [resTD,resY]=await Promise.all([fetch(`${base}?${paramsTD}`),fetch(`${base}?${paramsY}`)]); return { td:await resTD.json(), y:await resY.json() }; }
-async function fetchLocationName(lat, lon, lang){ try{ const res=await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&accept-language=${lang}`); if(!res.ok) return ""; const data=await res.json(); return data.address.city || data.address.town || data.address.village || data.address.county || data.display_name; }catch(e){ return ""; }}
+function withTimeout(promise, ms, label="요청"){ const ctrl = new AbortController(); const timer = setTimeout(()=>ctrl.abort(), ms); return Promise.race([ fetchPromiseWithSignal(promise, ctrl.signal), timeoutReject(ms, label) ]).finally(()=>clearTimeout(timer)); }
+async function fetchPromiseWithSignal(promise, signal){ const res = await promise(signal); return res; }
+function timeoutReject(ms, label){ return new Promise((_,rej)=> setTimeout(()=> rej(new Error(label+" 시간초과")), ms)); }
+
+// ---------- API ----------
+async function fetchWeather(lat, lon){
+  const { today, tomorrow, yesterday } = getDates();
+  const base = "https://api.open-meteo.com/v1/forecast";
+  const paramsTD = new URLSearchParams({ latitude:lat, longitude:lon, hourly:"temperature_2m,dewpoint_2m,windspeed_10m,precipitation_probability,uv_index", daily:"uv_index_max,temperature_2m_max,temperature_2m_min", timezone:"auto", start_date:today, end_date:tomorrow });
+  const paramsY = new URLSearchParams({ latitude:lat, longitude:lon, hourly:"temperature_2m", timezone:"auto", start_date:yesterday, end_date:yesterday });
+
+  const fetch1 = () => fetch(`${base}?${paramsTD}`);
+  const fetch2 = () => fetch(`${base}?${paramsY}`);
+
+  const [resTD, resY] = await Promise.all([ withTimeout(fetch1, 7000, "날씨"), withTimeout(fetch2, 7000, "어제날씨") ]);
+  if (!resTD.ok || !resY.ok) throw new Error("데이터 로드 실패");
+  return { td: await resTD.json(), y: await resY.json() };
+}
+
+async function fetchLocationName(lat, lon, lang){
+  try{
+    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&accept-language=${lang}`;
+    const res = await withTimeout((signal)=> fetch(url, {signal}), 3500, "지명");
+    if(!res.ok) return "";
+    const data = await res.json();
+    const a = data.address || {};
+    return a.city || a.town || a.village || a.county || data.display_name || "";
+  }catch(e){ return ""; }
+}
+
+// ---------- Data helpers ----------
 const buckets=[{name:"아침",range:[6,11]},{name:"점심",range:[12,16]},{name:"저녁",range:[17,20]},{name:"밤",range:[21,23],alt:[0,5]}];
 function avg(arr,s,e){const a=arr.slice(s,e+1);return a.reduce((x,y)=>x+y,0)/a.length;}
 function avgBucket(arr,{range,alt}){const main=avg(arr,range[0],range[1]); if(!alt)return main; const a=avg(arr,alt[0],alt[1]); return (main*3+a*1)/4;}
 function splitByDate(hourly){const map={}; hourly.time.forEach((iso,i)=>{const d=new Date(iso); const key=fmt(new Date(d.getFullYear(),d.getMonth(),d.getDate())); (map[key]||(map[key]=[])).push(i);}); return map;}
-function pickDay(td,dateStr){const h=td.hourly; const groups=splitByDate(h); const idxs=groups[dateStr]; if(!idxs)return null; const pick=(arr)=>arr?idxs.map(i=>arr[i]):[]; return {t:pick(h.temperature_2m),dp:pick(h.dewpoint_2m),wind:pick(h.windspeed_10m),rain:pick(h.precipitation_probability),uvh:pick(h.uv_index),uvmax:td.daily?.uv_index_max?.[(td.daily.time||[]).indexOf(dateStr)]??null,tmax:td.daily?.temperature_2m_max?.[(td.daily.time||[]).indexOf(dateStr)]??null,tmin:td.daily?.temperature_2m_min?.[(td.daily.time||[]).indexOf(dateStr)]??null}; }
-// Tone templates
-function buildHeadline(day,ref,modeLabel,tone){ const tAvg=day.t.reduce((a,b)=>a+b,0)/day.t.length; const rAvg=ref.t.reduce((a,b)=>a+b,0)/ref.t.length; const delta=tAvg-rAvg; const dp=day.dp.length?avg(day.dp,12,15):null; const rain=day.rain.length?avg(day.rain,12,15):0; const wind=day.wind.length?avg(day.wind,12,15):0; const uv=day.uvh.length?avg(day.uvh,11,13):(day.uvmax??0); const tmax=day.tmax,tmin=day.tmin;
-  // classify
-  let tempTone=delta>1.5?"따뜻":"비슷"; if(delta<-1.5) tempTone="선선";
-  let humidTone=dp>=24?"끈적":dp>=22?"습해":dp>=19?"살짝 습": "상쾌";
-  let windTone=wind>=8?"바람 강":wind>=5?"바람 조금":"";
-  let rainTone=rain>=60?"비 가능성 높음":"비 걱정 없음";
-  let uvTone=uv>=8?"자외선 매우 강":"", uvTone2=uv>=6?"자외선 강":"", uvTone3=uv>=3?"자외선 보통":"자외선 낮음";
-  // patterns by tone
+function pickDay(td,dateStr){const h=td.hourly; const groups=splitByDate(h); const idxs=groups[dateStr]; if(!idxs)return null; const pick=(arr)=>arr?idxs.map(i=>arr[i]):[]; return {t:pick(h.temperature_2m),dp:pick(h.dewpoint_2m),wind:pick(h.windspeed_10m),rain:pick(h.precipitation_probability),uvh:pick(h.uv_index),uvmax:td.daily?.uv_index_max?.[(td.daily.time||[]).indexOf(dateStr)]??null,tmax:td.daily?.temperature_2m_max?.[(td.daily.time||[]).indexOf(dateStr)]??null,tmin:td.daily?.temperature_2m_min?.[(td.daily.time||[]).indexOf(dateStr)]??null};}
+
+// ---------- Headline (tones) ----------
+function buildHeadline(day,ref,modeLabel,tone){
+  const tAvg = day.t.reduce((a,b)=>a+b,0)/day.t.length;
+  const rAvg = ref.t.reduce((a,b)=>a+b,0)/ref.t.length;
+  const delta = tAvg - rAvg;
+  const dp = day.dp.length ? avg(day.dp,12,15) : null;
+  const rain = day.rain.length ? avg(day.rain,12,15) : 0;
+  const wind = day.wind.length ? avg(day.wind,12,15) : 0;
+  const uv = day.uvh.length ? avg(day.uvh,11,13) : (day.uvmax ?? 0);
+
+  let tempTone = delta>1.5?"따뜻":"비슷"; if(delta<-1.5) tempTone="선선";
+  let humidTone = (dp===null)?"상쾌":(dp>=24?"끈적":dp>=22?"습해":dp>=19?"살짝 습":"상쾌");
+  let windTone = wind>=8?"바람 강":wind>=5?"바람 조금":"";
+  let uvTone = uv>=8?"자외선 매우 강":(uv>=6?"자외선 강":(uv>=3?"자외선 보통":"자외선 낮음"));
+  let rainTone = (rain>=60)?"비 가능성 높음":"비 걱정 없음";
+
   const patterns={
-    friend:[ `${modeLabel} ${tempTone}해~ ${humidTone} 느낌이고 ${windTone?windTone+", ":""}${uvTone||uvTone2||uvTone3}. ${rainTone}!` ],
-    butler:[ `${modeLabel} ${tempTone}합니다. 공기는 ${humidTone}합니다. ${windTone?windTone+"며, ":""}${uvTone||uvTone2||uvTone3}. ${rainTone}.` ],
-    formal:[ `${modeLabel} ${tempTone}한 편입니다. ${humidTone} 공기이고 ${windTone?windTone+" 상태이며, ":""}${uvTone||uvTone2||uvTone3}. ${rainTone}.` ],
-    god:[ `${modeLabel} ${tempTone}도다 ☀️ 공기는 ${humidTone}도다. ${windTone?windTone+" 불고, ":""}${uvTone||uvTone2||uvTone3}. ${rainTone}이리라.` ]
+    friend:[ `${modeLabel} ${tempTone}해~ ${humidTone} 느낌이고 ${windTone?windTone+", ":""}${uvTone}. ${rainTone}!`,
+             `${modeLabel} ${tempTone}! 공기가 ${humidTone}해서 ${uvTone}. ${rainTone}이라 우산은 ${rain>=60?"있으면 든든":"안 챙겨도 될 듯"}.` ],
+    butler:[ `${modeLabel} ${tempTone}합니다. 공기는 ${humidTone}합니다. ${windTone?windTone+"며, ":""}${uvTone}. ${rainTone}.` ],
+    formal:[ `${modeLabel} ${tempTone}한 편입니다. 공기는 ${humidTone}이고 ${windTone?windTone+" 상태이며, ":""}${uvTone}. ${rainTone}.` ],
+    god:[ `${modeLabel} ${tempTone}도다 ☀️ 공기는 ${humidTone}도다. ${windTone?windTone+" 불고, ":""}${uvTone}. ${rainTone}이리라.` ]
   };
-  const list=patterns[tone]||patterns.friend; return list[Math.floor(Math.random()*list.length)]; }
-function drawChart(seriesBase,seriesCompare,viewMode){const ctx=document.getElementById('weatherChart');const labels=["아침","점심","저녁","밤"];const nowH=new Date().getHours();let nowIdx=3;if(nowH>=6&&nowH<=11)nowIdx=0;else if(nowH>=12&&nowH<=16)nowIdx=1;else if(nowH>=17&&nowH<=20)nowIdx=2;const nowLinePlugin={id:'nowLine',afterDatasetsDraw(chart){if(viewMode!=='today')return;const {ctx,chartArea:{top,bottom},scales:{x}}=chart;const pos=x.getPixelForValue(nowIdx);ctx.save();ctx.lineWidth=1.2;ctx.strokeStyle='red';ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(pos,top);ctx.lineTo(pos,bottom);ctx.stroke();ctx.restore();}}; if(window.__jigiChart){window.__jigiChart.destroy();} window.__jigiChart=new Chart(ctx,{type:'line',data:{labels,datasets:[{label:'기준',data:seriesBase,tension:0.35,borderColor:'#B0BEC5',pointRadius:2},{label:'비교',data:seriesCompare,tension:0.35,borderColor:getComputedStyle(document.documentElement).getPropertyValue('--primary').trim(),pointRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{grid:{color:'#ECEFF1'},ticks:{maxTicksLimit:4,callback:(v)=>v+'°'}}},animation:false},plugins:[nowLinePlugin]);}
-async function init(lat,lon,label=""){try{const {td,y}=await fetchWeather(lat,lon);state.data={td,y}; state.locationName=await fetchLocationName(lat,lon,state.lang); document.getElementById('locLabel').textContent=state.locationName?state.locationName:label; render();}catch(e){document.getElementById('headline').textContent="데이터를 불러오지 못했어요.";console.error(e);}}
-function render(){const {today,tomorrow,yesterday}=getDates();const td=state.data.td,y=state.data.y;const todayArr=pickDay(td,today);const tomorrowArr=pickDay(td,tomorrow);const yestArr={t:y.hourly.temperature_2m};let info;if(state.view==='today'){info=buildHeadline(todayArr,yestArr,"오늘은 어제보다",state.tone);}else{info=buildHeadline(tomorrowArr,todayArr,"내일은 오늘보다",state.tone);} document.getElementById('headline').textContent=info; const chipsEl=document.getElementById('chips'); chipsEl.innerHTML="";}
-function useGeolocation(){if(!navigator.geolocation){toast("위치 기능을 사용할 수 없어요. 서울로 보여드릴게요.");init(37.5665,126.9780,"서울(기본)");return;}navigator.geolocation.getCurrentPosition((pos)=>{const {latitude:lat,longitude:lon}=pos.coords;init(lat,lon);},(err)=>{toast("위치 권한이 없어 서울로 보여드릴게요.");init(37.5665,126.9780,"서울(기본)");},{enableHighAccuracy:false,timeout:8000,maximumAge:300000});}
+  const list=patterns[tone]||patterns.friend;
+  return list[Math.floor(Math.random()*list.length)];
+}
+
+// ---------- Chart ----------
+function drawChart(seriesBase,seriesCompare,viewMode){
+  const ctx=document.getElementById('weatherChart');
+  const labels=["아침","점심","저녁","밤"];
+  const nowH=new Date().getHours(); let nowIdx=3;
+  if(nowH>=6&&nowH<=11)nowIdx=0; else if(nowH>=12&&nowH<=16)nowIdx=1; else if(nowH>=17&&nowH<=20)nowIdx=2;
+
+  const nowLinePlugin={ id:'nowLine', afterDatasetsDraw(chart){ if(viewMode!=='today')return; const {ctx,chartArea:{top,bottom},scales:{x}}=chart; const pos=x.getPixelForValue(nowIdx); ctx.save(); ctx.lineWidth=1.2; ctx.strokeStyle='red'; ctx.setLineDash([4,4]); ctx.beginPath(); ctx.moveTo(pos, top); ctx.lineTo(pos, bottom); ctx.stroke(); ctx.restore(); } };
+
+  if(window.__jigiChart){ window.__jigiChart.destroy(); }
+  window.__jigiChart=new Chart(ctx,{
+    type:'line',
+    data:{ labels, datasets:[
+      {label:'기준', data:seriesBase, tension:0.35, borderColor:'#B0BEC5', pointRadius:2 },
+      {label:'비교', data:seriesCompare, tension:0.35, borderColor:getComputedStyle(document.documentElement).getPropertyValue('--primary').trim(), pointRadius:3 }
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } },
+      layout:{ padding:{ left:6, right:6, top:2, bottom:0 } },
+      scales:{ x:{ grid:{ display:false } }, y:{ grid:{ color:'#ECEFF1' }, ticks:{ maxTicksLimit:4, callback:(v)=> v+'°' } } },
+      animation:false
+    },
+    plugins:[nowLinePlugin]
+  });
+}
+
+// ---------- App flow ----------
+async function init(lat,lon,label=""){
+  // Set quick initial labels
+  document.getElementById('locLabel').textContent = label || `위치 확인 중…`;
+  document.getElementById('headline').innerHTML = '<span class="skeleton sk-head"></span>';
+  document.getElementById('retryBtn').style.display='none';
+
+  try{
+    // Weather first
+    const { td, y } = await fetchWeather(lat, lon);
+    state.data = { td, y };
+
+    // Render asap
+    render();
+
+    // Then reverse geocoding in background (no block)
+    fetchLocationName(lat, lon, state.lang).then(name=>{
+      if(name){ state.locationName=name; document.getElementById('locLabel').textContent = name; }
+      else if(label){ document.getElementById('locLabel').textContent = label; }
+    });
+  }catch(e){
+    console.error(e);
+    document.getElementById('headline').textContent = "네트워크가 느려요. 다시 시도해볼까요?";
+    document.getElementById('retryBtn').style.display='inline-block';
+  }
+}
+
+function render(){
+  const { today, tomorrow, yesterday } = getDates();
+  const td=state.data.td, y=state.data.y;
+  const todayArr=pickDay(td,today);
+  const tomorrowArr=pickDay(td,tomorrow);
+  const yestArr={ t: y.hourly.temperature_2m };
+
+  let head, baseSeries, compSeries;
+  if(state.view==='today'){
+    head = buildHeadline(todayArr, yestArr, "오늘은 어제보다", state.tone);
+    baseSeries = buckets.map(b=>avgBucket(yestArr.t,b));
+    compSeries = buckets.map(b=>avgBucket(todayArr.t,b));
+  }else{
+    head = buildHeadline(tomorrowArr, todayArr, "내일은 오늘보다", state.tone);
+    baseSeries = buckets.map(b=>avgBucket(todayArr.t,b));
+    compSeries = buckets.map(b=>avgBucket(tomorrowArr.t,b));
+  }
+  document.getElementById('headline').textContent = head;
+
+  drawChart(baseSeries, compSeries, state.view);
+
+  // Tip chips (derived, very light rules)
+  const chipsEl=document.getElementById('chips'); chipsEl.innerHTML="";
+  const dp = (state.view==='today'? avg(todayArr.dp,12,15) : avg(tomorrowArr.dp,12,15));
+  const rain = (state.view==='today'? avg(todayArr.rain,12,15) : avg(tomorrowArr.rain,12,15));
+  const wind = (state.view==='today'? avg(todayArr.wind,12,15) : avg(tomorrowArr.wind,12,15));
+  const uvh  = (state.view==='today'? (todayArr.uvh.length? avg(todayArr.uvh,11,13):todayArr.uvmax) : (tomorrowArr.uvh.length? avg(tomorrowArr.uvh,11,13):tomorrowArr.uvmax));
+
+  const chips=[];
+  if(dp && dp>=19) chips.push("🧵 통풍 좋은 옷");
+  if(rain && rain>=60) chips.push("☂ 우산 챙기기");
+  if(wind && wind>=7) chips.push("🧥 바람막이");
+  if(uvh && uvh>=7) chips.push("🧴 선크림/모자");
+  Array.from(new Set(chips)).slice(0,3).forEach((t,i)=>{
+    const d=document.createElement('div'); d.className='chip'+(i===0?' active':''); d.textContent=t; chipsEl.appendChild(d);
+  });
+}
+
+// ---------- Geolocation & UI ----------
+function useGeolocation(){
+  if(!navigator.geolocation){
+    toast("위치 기능을 사용할 수 없어요. 서울로 보여드릴게요.");
+    init(37.5665,126.9780,"서울(기본)");
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(
+    (pos)=>{ const { latitude:lat, longitude:lon } = pos.coords; init(lat, lon); },
+    (err)=>{ toast("위치 권한이 없어 서울로 보여드릴게요."); init(37.5665,126.9780,"서울(기본)"); },
+    { enableHighAccuracy:false, timeout:8000, maximumAge:300000 }
+  );
+}
+
+// Slow-load hint after 4s
+setTimeout(()=>{
+  if(!state.data){
+    document.getElementById('locLabel').textContent = "네트워크가 느려요… 잠시만요";
+  }
+}, 4000);
+
 // UI handlers
-document.getElementById('tgToday').addEventListener('click',()=>{state.view='today';document.getElementById('tgToday').classList.add('active');document.getElementById('tgTomorrow').classList.remove('active');render();});
-document.getElementById('tgTomorrow').addEventListener('click',()=>{state.view='tomorrow';document.getElementById('tgTomorrow').classList.add('active');document.getElementById('tgToday').classList.remove('active');render();});
+document.getElementById('tgToday').addEventListener('click',()=>{state.view='today';document.getElementById('tgToday').classList.add('active');document.getElementById('tgTomorrow').classList.remove('active'); if(state.data) render();});
+document.getElementById('tgTomorrow').addEventListener('click',()=>{state.view='tomorrow';document.getElementById('tgTomorrow').classList.add('active');document.getElementById('tgToday').classList.remove('active'); if(state.data) render();});
 document.getElementById('btnRefresh').addEventListener('click',()=>useGeolocation());
+document.getElementById('retryBtn').addEventListener('click',()=>useGeolocation());
 document.getElementById('settingsBtn').addEventListener('click',()=>{document.getElementById('settingsPanel').classList.toggle('open');});
-document.getElementById('langSelect').addEventListener('change',(e)=>{state.lang=e.target.value;toast("언어 설정은 재실행 시 반영됩니다.");});
-document.getElementById('toneSelect').addEventListener('change',(e)=>{state.tone=e.target.value;render();});
+document.getElementById('langSelect').addEventListener('change',(e)=>{state.lang=e.target.value; toast("언어 설정은 지명 표시에 반영됩니다."); if(state.locationName){ document.getElementById('locLabel').textContent="지명 새로고침 중…"; } if(navigator.geolocation) navigator.geolocation.getCurrentPosition((pos)=> fetchLocationName(pos.coords.latitude,pos.coords.longitude,state.lang).then(name=>{ if(name){ state.locationName=name; document.getElementById('locLabel').textContent=name; } })); });
+document.getElementById('toneSelect').addEventListener('change',(e)=>{state.tone=e.target.value; if(state.data) render();});
+
+// Start
 useGeolocation();
 </script>
 </body>
