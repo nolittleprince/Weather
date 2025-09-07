@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <title>JIGI v0.5.7</title>
+  <title>JIGI v0.5.8</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root{ --primary:#1976D2; --text:#232323; --muted:#9E9E9E; --bg:#FFFFFF; --chip:#F2F6FA; --ad:#E0E0E0; }
@@ -90,7 +90,7 @@
     </select>
     <div class="info">
       <p><b>앱 이름</b>: JIGI</p>
-      <p><b>버전</b>: v0.5.7</p>
+      <p><b>버전</b>: v0.5.8</p>
       <p><b>만든 사람</b>: 류재영</p>
       <p><b>이메일</b>: nolittleprince@gmail.com</p>
       <p><b>Instagram</b>: @nolittle.prince</p>
@@ -139,119 +139,26 @@ const buckets=[{name:"아침",range:[6,11]},{name:"점심",range:[12,16]},{name:
 function avg(arr,s,e){const a=arr.slice(s,e+1);return a.reduce((x,y)=>x+y,0)/a.length;}
 function avgBucket(arr,{range,alt}){const main=avg(arr,range[0],range[1]); if(!alt)return main; const a=avg(arr,alt[0],alt[1]); return (main*3+a*1)/4;}
 function splitByDate(hourly){const map={}; hourly.time.forEach((iso,i)=>{const d=new Date(iso); const key=fmt(new Date(d.getFullYear(),d.getMonth(),d.getDate())); (map[key]||(map[key]=[])).push(i);}); return map;}
-function pickDay(td,dateStr){const h=td.hourly; const groups=splitByDate(h); const idxs=groups[dateStr]; if(!idxs)return null; const pick=(arr)=>arr?idxs.map(i=>arr[i]):[]; return {t:pick(h.temperature_2m),dp:pick(h.dewpoint_2m),wind:pick(h.windspeed_10m),rain:pick(h.precipitation_probability),uvh:pick(h.uv_index),uvmax:td.daily?.uv_index_max?.[(td.daily.time||[]).indexOf(dateStr)]??null,tmax:td.daily?.temperature_2m_max?.[(td.daily.time||[]).indexOf(dateStr)]??null,tmin:td.daily?.temperature_2m_min?.[(td.daily.time||[]).indexOf(dateStr)]??null};}
+function pickDay(td,dateStr){const h=td.hourly; const groups=splitByDate(h); const idxs=groups[dateStr]; if(!idxs)return null; const pick=(arr)=>arr?idxs.map(i=>arr[i]):[]; return {t:pick(h.temperature_2m),dp:pick(h.dewpoint_2m),wind:pick(h.windspeed_10m),rain:pick(h.precipitation_probability),uvh:pick(h.uv_index),uvmax:td.daily?.uv_index_max?.[(td.daily.time||[]).indexOf(dateStr)]??null,tmax:td.daily?.temperature_2m_max?.[(td.daily.time||[]).indexOf(dateStr)]??null,tmin:td.daily?.temperature_2m_min?.[(t...
 
-// ---------- Solar terms (24절기) ----------
-// Approximate ranges by month/day (KST). Kept simple for MVP.
-const SOLAR_KO=[
-  {m:2,d:4, n:"입춘"},{m:2,d:19,n:"우수"},{m:3,d:5,n:"경칩"},{m:3,d:20,n:"춘분"},{m:4,d:4,n:"청명"},{m:4,d:20,n:"곡우"},
-  {m:5,d:5,n:"입하"},{m:5,d:21,n:"소만"},{m:6,d:5,n:"망종"},{m:6,d:21,n:"하지"},{m:7,d:7,n:"소서"},{m:7,d:23,n:"대서"},
-  {m:8,d:7,n:"입추"},{m:8,d:23,n:"처서"},{m:9,d:7,n:"백로"},{m:9,d:23,n:"추분"},{m:10,d:8,n:"한로"},{m:10,d:24,n:"상강"},
-  {m:11,d:7,n:"입동"},{m:11,d:22,n:"소설"},{m:12,d:7,n:"대설"},{m:12,d:22,n:"동지"},{m:1,d:6,n:"소한"},{m:1,d:20,n:"대한"}
-];
-const SOLAR_EN={
-  "입춘":"Start of Spring","우수":"Rain Water","경칩":"Waking of Insects","춘분":"Spring Equinox","청명":"Clear and Bright","곡우":"Grain Rain",
-  "입하":"Start of Summer","소만":"Lesser Fullness","망종":"Grain in Ear","하지":"Summer Solstice","소서":"Lesser Heat","대서":"Greater Heat",
-  "입추":"Start of Autumn","처서":"Limit of Heat","백로":"White Dew","추분":"Autumn Equinox","한로":"Cold Dew","상강":"Frost Descent",
-  "입동":"Start of Winter","소설":"Lesser Snow","대설":"Greater Snow","동지":"Winter Solstice","소한":"Lesser Cold","대한":"Greater Cold"
-};
-const SOLAR_JA={
-  "입춘":"立春","우수":"雨水","경칩":"啓蟄","춘분":"春分","청명":"清明","곡우":"穀雨",
-  "입하":"立夏","소만":"小満","망종":"芒種","하지":"夏至","소서":"小暑","대서":"大暑",
-  "입추":"立秋","처서":"処暑","백로":"白露","추분":"秋分","한로":"寒露","상강":"霜降",
-  "입동":"立冬","소설":"小雪","대설":"大雪","동지":"冬至","소한":"小寒","대한":"大寒"
-};
-function solarTerm(today, lang){
-  // find last term before or equal today
-  const y=today.getFullYear();
-  const list=SOLAR_KO.map(t=>({date:new Date(y, t.m-1, t.d), n:t.n})).sort((a,b)=>a.date-b.date);
-  // handle Jan terms (소한/대한): if today in Jan before Jan20 adjust
-  const janTerms=list.filter(t=> t.date.getMonth()===0);
-  const all=list.concat(); all.sort((a,b)=>a.date-b.date);
-  let cur=all[0];
-  for(const t of all){ if(today>=t.date) cur=t; }
-  const name=cur.n;
-  if(lang==='ko') return name;
-  if(lang==='en') return SOLAR_EN[name] || name;
-  if(lang==='ja') return SOLAR_JA[name] || name;
-  return name;
-}
-
-// ---------- Headline (tones & phrasing fix) ----------
-function buildHeadline(day,ref,mode,tone,lang){
-  const tAvg = day.t.reduce((a,b)=>a+b,0)/day.t.length;
-  const rAvg = ref.t.reduce((a,b)=>a+b,0)/ref.t.length;
-  const delta = tAvg - rAvg;
-  const abs = Math.abs(delta);
-
-  const dp = day.dp.length ? avg(day.dp,12,15) : null;
-  const rain = day.rain.length ? avg(day.rain,12,15) : 0;
-  const wind = day.wind.length ? avg(day.wind,12,15) : 0;
-  const uv = day.uvh.length ? avg(day.uvh,11,13) : (day.uvmax ?? 0);
-
-  // --- temperature phrase with grammar fix ---
-  let lead="";
-  const baseToday   = (lang==='ko')? "오늘은 어제랑" : (lang==='ja'?"今日は昨日と":"Today vs Yesterday");
-  const baseTomorrow= (lang==='ko')? "내일도 오늘이랑" : (lang==='ja'?"明日も今日と":"Tomorrow vs Today");
-  const compToday   = (lang==='ko')? "오늘은 어제보다" : (lang==='ja'?"今日は昨日より":"Today than Yesterday");
-  const compTomorrow= (lang==='ko')? "내일은 오늘보다" : (lang==='ja'?"明日は今日より":"Tomorrow than Today");
-
-  const samePhrases = (lang==='ko')? ["거의 같아요","큰 차이 없어요"] :
-                      (lang==='ja')? ["ほぼ同じです","大きな差はありません"] :
-                                      ["about the same","no big change"];
-  const smallUp     = (lang==='ko')? "조금 더 포근해요" : (lang==='ja'?"少し暖かいです":"a bit warmer");
-  const smallDown   = (lang==='ko')? "살짝 서늘하네요" : (lang==='ja'?"少し涼しいです":"a bit cooler");
-  const bigUp       = (lang==='ko')? "확실히 따뜻해요" : (lang==='ja'?"はっきり暖かいです":"noticeably warmer");
-  const bigDown     = (lang==='ko')? "확실히 선선해요" : (lang==='ja'?"はっきり涼しいです":"noticeably cooler");
-
-  if (abs <= 0.5){
-    const base = (mode==='today') ? baseToday : baseTomorrow;
-    lead = `${base} ${samePhrases[ Math.floor(Math.random()*samePhrases.length) ]}`;
-  } else if (abs <= 1.5){
-    const base = (mode==='today') ? compToday : compTomorrow;
-    lead = `${base} ${delta>0 ? smallUp : smallDown}`;
-  } else {
-    const base = (mode==='today') ? compToday : compTomorrow;
-    lead = `${base} ${delta>0 ? bigUp : bigDown}`;
-  }
-
-  // humidity / wind / uv / rain tone (short)
-  const humidTone = (dp===null) ? (lang==='ko'?"상쾌해요":(lang==='ja'?"さわやかです":"feels fresh"))
-                     : (dp>=24 ? (lang==='ko'?"많이 끈적해요":(lang==='ja'?"かなり蒸し暑いです":"very muggy"))
-                     : (dp>=22 ? (lang==='ko'?"좀 습해요":(lang==='ja'?"少し蒸します":"quite humid"))
-                     : (dp>=19 ? (lang==='ko'?"살짝 습해요":(lang==='ja'?"やや湿っぽいです":"slightly humid"))
-                               : (lang==='ko'?"상쾌해요":(lang==='ja'?"さわやかです":"fresh"))));
-
-  let windTone = ""; if (wind>=8) windTone = (lang==='ko')?"바람이 강해요":(lang==='ja'?"風が強いです":"windy");
-  else if (wind>=5) windTone = (lang==='ko')?"바람이 조금 불어요":(lang==='ja'?"やや風があります":"a bit breezy");
-
-  let uvTone = (uv>=8)? ((lang==='ko')?"자외선 매우 강해요":(lang==='ja'?"紫外線がとても強いです":"UV very high"))
-             : (uv>=6)? ((lang==='ko')?"자외선이 강해요":(lang==='ja'?"紫外線が強いです":"UV high"))
-             : (uv>=3)? ((lang==='ko')?"자외선 보통이에요":(lang==='ja'?"紫外線は普通です":"UV moderate"))
-                      : ((lang==='ko')?"자외선 낮아요":(lang==='ja'?"紫外線は低いです":"UV low"));
-
-  const rainTone = (rain>=60)? ((lang==='ko')?"비 올 수도 있어요":(lang==='ja'?"雨の可能性があります":"chance of rain"))
-                              : ((lang==='ko')?"비 걱정은 없어요":(lang==='ja'?"雨の心配はありません":"no rain expected"));
-
-  // seasonal note
-  const term = solarTerm(new Date(), state.lang);
-  const termTxt = (lang==='ko') ? `지금은 ${term}이에요.`
-                : (lang==='ja') ? `今は「${term}」の頃です。`
-                                : `Now around "${(SOLAR_EN[term]||term)}".`;
-
-  // tone templates
-  const combine = (a,b,c,d) => {
-    const parts=[a,b,c,d].filter(Boolean);
-    return parts.join(" ");
-  };
-
-  const friend = combine(lead, humidTone, windTone, `${uvTone}. ${rainTone} ${termTxt}`);
-  const butler = combine(lead, (lang==='ko'?"공기는 ":"空気は ")+(humidTone.replace("요","")+ (lang==='ko'?"입니다.":"。")), windTone ? windTone+(lang==='ko'?" ":"。"):"", `${uvTone}. ${rainTone} ${termTxt}`);
-  const formal = combine(lead, (lang==='ko'?"공기는 ":"空気は ")+(humidTone.replace("요","")+ (lang==='ko'?"입니다.":"。")), windTone ? windTone+(lang==='ko'?" ":"。"):"", `${uvTone}. ${rainTone} ${termTxt}`);
-  const god    = combine(lead+(lang==='ko'?"":"."), (lang==='ko'?"공기 기운이 ":"空気の気配は ")+humidTone+(lang==='ko'?"도다.":"。"), windTone? (windTone+(lang==='ko'?"도다.":"。")):"", `${uvTone}. ${rainTone} ${termTxt}`);
-
-  const map = { friend, butler, formal, god };
-  return map[tone] || friend;
+// ---------- Solar terms & Headline (same as v0.5.7) ----------
+const SOLAR_KO=[{m:2,d:4,n:"입춘"},{m:2,d:19,n:"우수"},{m:3,d:5,n:"경칩"},{m:3,d:20,n:"춘분"},{m:4,d:4,n:"청명"},{m:4,d:20,n:"곡우"},{m:5,d:5,n:"입하"},{m:5,d:21,n:"소만"},{m:6,d:5,n:"망종"},{m:6,d:21,n:"하지"},{m:7,d:7,n:"소서"},{m:7,d:23,n:"대서"},{m:8,d:7,n:"입추"},{m:8,d:23,n:"처서"},{m:9,d:7,n:"백로"},{m:9,d:23,n:"추분"},{m:10,d:8,n:"한로"},{m:10,d:24,n:"상강"},{m:11,d:7,n:"입동"},{m:11,d:22,n:"소설"},{m:12,d:7,n:"대설"},{m:12,d:22,n:"동지"},{m:1,d:6,n:"소한"},{m:1,d:20,n:"대한"}];
+const SOLAR_EN={"입춘":"Start of Spring","우수":"Rain Water","경칩":"Waking of Insects","춘분":"Spring Equinox","청명":"Clear and Bright","곡우":"Grain Rain","입하":"Start of Summer","소만":"Lesser Fullness","망종":"Grain in Ear","하지":"Summer Solstice","소서":"Lesser Heat","대서":"Greater Heat","입추":"Start of Autumn","처서":"Limit of Heat","백로":"White Dew","추분":"Autumn Equinox","한로":"Cold Dew","상강":"Frost Descent","입동":"Start of Winter","소설":"Lesser Snow","대설":"Greater Snow","동지":"Winter Solstice","소한":"Lesser Cold","대한":"Greater Cold"};
+const SOLAR_JA={"입춘":"立春","우수":"雨水","경칩":"啓蟄","춘분":"春分","청명":"清明","곡우":"穀雨","입하":"立夏","소만":"小満","망종":"芒種","하지":"夏至","소서":"小暑","대서":"大暑","입추":"立秋","처서":"処暑","백로":"白露","추분":"秋分","한로":"寒露","상강":"霜降","입동":"立冬","소설":"小雪","대설":"大雪","동지":"冬至","소한":"小寒","대한":"大寒"};
+function solarTerm(today, lang){const y=today.getFullYear();const list=SOLAR_KO.map(t=>({date:new Date(y,t.m-1,t.d),n:t.n})).sort((a,b)=>a.date-b.date);let cur=list[0];for(const t of list){ if(today>=t.date) cur=t; }const name=cur.n; if(lang==='ko') return name; if(lang==='en') return SOLAR_EN[name]||name; if(lang==='ja') return SOLAR_JA[name]||name; return name;}
+function buildHeadline(day,ref,mode,tone,lang){const tAvg=day.t.reduce((a,b)=>a+b,0)/day.t.length; const rAvg=ref.t.reduce((a,b)=>a+b,0)/ref.t.length; const delta=tAvg-rAvg; const abs=Math.abs(delta); const dp=day.dp.length?avg(day.dp,12,15):null; const rain=day.rain.length?avg(day.rain,12,15):0; const wind=day.wind.length?avg(day.wind,12,15):0; const uv=day.uvh.length?avg(day.uvh,11,13):(day.uvmax??0);
+  let lead=""; const baseToday=(lang==='ko')?"오늘은 어제랑":(lang==='ja'?"今日は昨日と":"Today vs Yesterday"); const baseTomorrow=(lang==='ko')?"내일도 오늘이랑":(lang==='ja'?"明日も今日と":"Tomorrow vs Today"); const compToday=(lang==='ko')?"오늘은 어제보다":(lang==='ja'?"今日は昨日より":"Today than Yesterday"); const compTomorrow=(lang==='ko')?"내일은 오늘보다":(lang==='ja'?"明日は今日より":"Tomorrow than Today");
+  const samePhrases=(lang==='ko')?["거의 같아요","큰 차이 없어요"]:(lang==='ja')?["ほぼ同じです","大きな差はありません"]:["about the same","no big change"];
+  const smallUp=(lang==='ko')?"조금 더 포근해요":(lang==='ja'?"少し暖かいです":"a bit warmer"); const smallDown=(lang==='ko')?"살짝 서늘하네요":(lang==='ja'?"少し涼しいです":"a bit cooler");
+  const bigUp=(lang==='ko')?"확실히 따뜻해요":(lang==='ja'?"はっきり暖かいです":"noticeably warmer"); const bigDown=(lang==='ko')?"확실히 선선해요":(lang==='ja'?"はっきり涼しいです":"noticeably cooler");
+  if(abs<=0.5){ const base=(mode==='today')?baseToday:baseTomorrow; lead=`${base} ${samePhrases[Math.floor(Math.random()*samePhrases.length)]}`; }
+  else if(abs<=1.5){ const base=(mode==='today')?compToday:compTomorrow; lead=`${base} ${delta>0?smallUp:smallDown}`; }
+  else{ const base=(mode==='today')?compToday:compTomorrow; lead=`${base} ${delta>0?bigUp:bigDown}`; }
+  const humidTone=(dp===null)?(lang==='ko'?"상쾌해요":(lang==='ja'?"さわやかです":"feels fresh")):(dp>=24?(lang==='ko'?"많이 끈적해요":(lang==='ja'?"かなり蒸し暑いです":"very muggy")):(dp>=22?(lang==='ko'?"좀 습해요":(lang==='ja'?"少し蒸します":"quite humid")):(dp>=19?(lang==='ko'?"살짝 습해요":(lang==='ja'?"やや湿っぽいです":"slightly humid")):(lang==='ko'?"상쾌해요":(lang==='ja'?"さわやかです":"fresh"))))); let windTone=""; if(wind>=8) windTone=(lang==='ko')?"바람이 강해요":(lang==='ja'?"風が強いです":"windy"); else if(wind>=5) windTone=(lang==='ko')?"바람이 조금 불어요":(lang==='ja'?"やや風があります":"a bit breezy");
+  let uvTone=(uv>=8)?((lang==='ko')?"자외선 매우 강해요":(lang==='ja'?"紫外線がとても強いです":"UV very high")):(uv>=6)?((lang==='ko')?"자외선이 강해요":(lang==='ja'?"紫外線が強いです":"UV high")):(uv>=3)?((lang==='ko')?"자외선 보통이에요":(lang==='ja'?"紫外線は普通です":"UV moderate")):((lang==='ko')?"자외선 낮아요":(lang==='ja'?"紫外線は低いです":"UV low"));
+  const rainTone=(rain>=60)?((lang==='ko')?"비 올 수도 있어요":(lang==='ja'?"雨の可能性があります":"chance of rain")):((lang==='ko')?"비 걱정은 없어요":(lang==='ja'?"雨の心配はありません":"no rain expected"));
+  const term=solarTerm(new Date(), state.lang); const termTxt=(lang==='ko')?`지금은 ${term}이에요.`:(lang==='ja')?`今は「${term}」の頃です。`:`Now around "${(SOLAR_EN[term]||term)}".`;
+  return [lead, humidTone, windTone, `${uvTone}. ${rainTone} ${termTxt}`].filter(Boolean).join(" ");
 }
 
 // ---------- Chart ----------
@@ -260,28 +167,15 @@ function drawChart(seriesBase,seriesCompare,viewMode){
   const labels=["아침","점심","저녁","밤"];
   const nowH=new Date().getHours(); let nowIdx=3;
   if(nowH>=6&&nowH<=11)nowIdx=0; else if(nowH>=12&&nowH<=16)nowIdx=1; else if(nowH>=17&&nowH<=20)nowIdx=2;
-
   const nowLinePlugin={ id:'nowLine', afterDatasetsDraw(chart){ if(viewMode!=='today')return; const {ctx,chartArea:{top,bottom},scales:{x}}=chart; const pos=x.getPixelForValue(nowIdx); ctx.save(); ctx.lineWidth=1.2; ctx.strokeStyle='red'; ctx.setLineDash([4,4]); ctx.beginPath(); ctx.moveTo(pos, top); ctx.lineTo(pos, bottom); ctx.stroke(); ctx.restore(); } };
-
   if(window.__jigiChart){ window.__jigiChart.destroy(); }
-  window.__jigiChart=new Chart(ctx,{
-    type:'line',
-    data:{ labels, datasets:[
-      {label:'기준', data:seriesBase, tension:0.35, borderColor:'#B0BEC5', pointRadius:2 },
-      {label:'비교', data:seriesCompare, tension:0.35, borderColor:getComputedStyle(document.documentElement).getPropertyValue('--primary').trim(), pointRadius:3 }
-    ]},
-    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } },
-      layout:{ padding:{ left:6, right:6, top:2, bottom:0 } },
-      scales:{ x:{ grid:{ display:false } }, y:{ grid:{ color:'#ECEFF1' }, ticks:{ maxTicksLimit:4, callback:(v)=> v+'°' } } },
-      animation:false
-    },
-    plugins:[nowLinePlugin]
-  });
+  window.__jigiChart=new Chart(ctx,{ type:'line', data:{ labels, datasets:[ {label:'기준', data:seriesBase, tension:0.35, borderColor:'#B0BEC5', pointRadius:2 }, {label:'비교', data:seriesCompare, tension:0.35, borderColor:getComputedStyle(document.documentElement).getPropertyValue('--primary').trim(), pointRadius:3 } ] }, options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } }, layout:{ padding:{ left:6, right:6, top:2, bottom:0 } }, scales:{ x:{ grid:{ display:false } }, y:{ grid:{ color:'#ECEFF1' }, ticks:{ maxTicksLimit:4, callback:(v)=> v+'°' } } }, animation:false }, plugins:[nowLinePlugin] });
 }
 
 // ---------- App flow ----------
 async function init(lat,lon,label=""){
-  document.getElementById('locLabel').textContent = label || `위치 확인 중…`;
+  // Always set a fallback label immediately (prevents '위치 확인 중…' from sticking)
+  document.getElementById('locLabel').textContent = label || "현재 위치";
   document.getElementById('headline').innerHTML = '<span class="skeleton sk-head"></span>';
   document.getElementById('retryBtn').style.display='none';
 
@@ -289,9 +183,10 @@ async function init(lat,lon,label=""){
     const { td, y } = await fetchWeather(lat, lon);
     state.data = { td, y };
     render();
+    // Try update to real place name (non-blocking)
     fetchLocationName(lat, lon, state.lang).then(name=>{
       if(name){ state.locationName=name; document.getElementById('locLabel').textContent = name; }
-      else if(label){ document.getElementById('locLabel').textContent = label; }
+      // if fails, keep the fallback we already set
     });
   }catch(e){
     console.error(e);
@@ -318,24 +213,16 @@ function render(){
     compSeries = buckets.map(b=>avgBucket(tomorrowArr.t,b));
   }
   document.getElementById('headline').textContent = head;
-
   drawChart(baseSeries, compSeries, state.view);
 
-  // Tip chips (light)
+  // Tip chips
   const chipsEl=document.getElementById('chips'); chipsEl.innerHTML="";
-  const dp = (state.view==='today'? avg(todayArr.dp,12,15) : avg(tomorrowArr.dp,12,15));
-  const rain = (state.view==='today'? avg(todayArr.rain,12,15) : avg(tomorrowArr.rain,12,15));
-  const wind = (state.view==='today'? avg(todayArr.wind,12,15) : avg(tomorrowArr.wind,12,15));
+  const dp = (state.view==='today'? (todayArr.dp.length?avg(todayArr.dp,12,15):null) : (tomorrowArr.dp.length?avg(tomorrowArr.dp,12,15):null));
+  const rain = (state.view==='today'? (todayArr.rain.length?avg(todayArr.rain,12,15):0) : (tomorrowArr.rain.length?avg(tomorrowArr.rain,12,15):0));
+  const wind = (state.view==='today'? (todayArr.wind.length?avg(todayArr.wind,12,15):0) : (tomorrowArr.wind.length?avg(tomorrowArr.wind,12,15):0));
   const uvh  = (state.view==='today'? (todayArr.uvh.length? avg(todayArr.uvh,11,13):todayArr.uvmax) : (tomorrowArr.uvh.length? avg(tomorrowArr.uvh,11,13):tomorrowArr.uvmax));
-
-  const chips=[];
-  if(dp && dp>=19) chips.push("🧵 통풍 좋은 옷");
-  if(rain && rain>=60) chips.push("☂ 우산 챙기기");
-  if(wind && wind>=7) chips.push("🧥 바람막이");
-  if(uvh && uvh>=7) chips.push("🧴 선크림/모자");
-  Array.from(new Set(chips)).slice(0,3).forEach((t,i)=>{
-    const d=document.createElement('div'); d.className='chip'+(i===0?' active':''); d.textContent=t; chipsEl.appendChild(d);
-  });
+  const chips=[]; if(dp!==null && dp>=19) chips.push("🧵 통풍 좋은 옷"); if(rain>=60) chips.push("☂ 우산 챙기기"); if(wind>=7) chips.push("🧥 바람막이"); if(uvh>=7) chips.push("🧴 선크림/모자");
+  Array.from(new Set(chips)).slice(0,3).forEach((t,i)=>{ const d=document.createElement('div'); d.className='chip'+(i===0?' active':''); d.textContent=t; chipsEl.appendChild(d); });
 }
 
 // ---------- Geolocation & UI ----------
@@ -346,35 +233,26 @@ function useGeolocation(){
     return;
   }
   navigator.geolocation.getCurrentPosition(
-    (pos)=>{ const { latitude:lat, longitude:lon } = pos.coords; init(lat, lon); },
+    (pos)=>{ const { latitude:lat, longitude:lon } = pos.coords; init(lat, lon, "현재 위치"); },
     (err)=>{ toast("위치 권한이 없어 서울로 보여드릴게요."); init(37.5665,126.9780,"서울(기본)"); },
     { enableHighAccuracy:false, timeout:8000, maximumAge:300000 }
   );
 }
 
 // Slow-load hint after 4s
-setTimeout(()=>{
-  if(!state.data){
-    document.getElementById('locLabel').textContent = "네트워크가 느려요… 잠시만요";
-  }
-}, 4000);
+setTimeout(()=>{ if(!state.data){ document.getElementById('locLabel').textContent = "네트워크가 느려요… 잠시만요"; } }, 4000);
 
 // UI handlers
 const panel = document.getElementById('settingsPanel');
 const overlay = document.getElementById('overlay');
-function togglePanel(open){
-  if(open===undefined) open = !panel.classList.contains('open');
-  panel.classList.toggle('open', open);
-  overlay.classList.toggle('show', open);
-}
+function togglePanel(open){ if(open===undefined) open = !panel.classList.contains('open'); panel.classList.toggle('open', open); overlay.classList.toggle('show', open); }
 document.getElementById('settingsBtn').addEventListener('click',()=>togglePanel());
 overlay.addEventListener('click',()=>togglePanel(false));
-
 document.getElementById('tgToday').addEventListener('click',()=>{state.view='today';document.getElementById('tgToday').classList.add('active');document.getElementById('tgTomorrow').classList.remove('active'); if(state.data) render();});
 document.getElementById('tgTomorrow').addEventListener('click',()=>{state.view='tomorrow';document.getElementById('tgTomorrow').classList.add('active');document.getElementById('tgToday').classList.remove('active'); if(state.data) render();});
 document.getElementById('btnRefresh').addEventListener('click',()=>useGeolocation());
 document.getElementById('retryBtn').addEventListener('click',()=>useGeolocation());
-document.getElementById('langSelect').addEventListener('change',(e)=>{state.lang=e.target.value; toast("언어 설정은 지명/문장에 반영됩니다."); if(state.locationName){ document.getElementById('locLabel').textContent="지명 새로고침 중…"; } if(navigator.geolocation) navigator.geolocation.getCurrentPosition((pos)=> fetchLocationName(pos.coords.latitude,pos.coords.longitude,state.lang).then(name=>{ if(name){ state.locationName=name; document.getElementById('locLabel').textContent=name; } })); if(state.data) render(); });
+document.getElementById('langSelect').addEventListener('change',(e)=>{state.lang=e.target.value; toast("언어 설정은 지명/문장에 반영됩니다."); if(state.locationName){ document.getElementById('locLabel').textContent="지명 새로고침 중…"; } if(navigator.geolocation) navigator.geolocation.getCurrentPosition((pos)=> fetchLocationName(pos.coords.latitude,pos.coords.longitude,state.lang).then(name=>{ if(name){ state.locationName=name; document.getElementById('locLabel').textContent=name; } else { document.getElementById('locLabel').textContent="현재 위치"; } })); if(state.data) render();});
 document.getElementById('toneSelect').addEventListener('change',(e)=>{state.tone=e.target.value; if(state.data) render();});
 
 // Start
