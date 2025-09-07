@@ -2,12 +2,12 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <title>JIGI v0.5.2</title>
+  <title>JIGI v0.5.3</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root{
       --primary:#1976D2; --text:#424242; --muted:#B0BEC5; --bg:#FFFFFF;
-      --chip:#F2F6FA; --ad:#E0E0E0;
+      --chip:#F2F6FA; --ad:#E0E0E0; --badge:#FFCDD2;
     }
     *{box-sizing:border-box}
     body{
@@ -18,24 +18,46 @@
     header{ width:100%; padding:16px 20px; text-align:center}
     h1{ margin:0; font-size:24px; color:var(--primary) }
     .headline{ font-size:16px; margin-top:8px; text-align:center }
-    .chips{ display:flex; gap:8px; margin:10px 0; padding:0 16px; flex-wrap:wrap; justify-content:center }
-    .chip{ padding:6px 12px; border-radius:16px; background:var(--chip); color:var(--text); font-size:14px }
-    .chip.active{ background:var(--primary); color:#fff }
+
     .wrap{ width:100%; max-width:720px; display:flex; flex-direction:column; align-items:center }
-    .toolbar{ width:92%; display:flex; justify-content:space-between; align-items:center; gap:8px; margin:6px 0 4px }
+
+    .toolbar{ width:92%; display:flex; justify-content:space-between; align-items:center; gap:8px; margin:8px 0 4px }
     .loc{ font-size:12px; color:#666 }
     .btn{ padding:8px 10px; border:none; border-radius:10px; background:#EEF4FF; color:var(--primary); font-weight:600; font-size:12px }
     .toggle{ display:inline-flex; background:#EFF3F9; border-radius:12px; padding:2px; gap:2px }
     .tgbtn{ border:none; background:transparent; padding:6px 10px; border-radius:10px; font-size:12px; color:#555 }
     .tgbtn.active{ background:#fff; color:#000; box-shadow:0 1px 3px rgba(0,0,0,0.08) }
-    #chart-wrap{ width:92%; height:160px; margin:6px 0 }
-    canvas{ width:100% !important; height:100% !important; }
-    .cards{ display:flex; gap:8px; width:92%; margin:6px 0 }
+
+    .chips{ display:flex; gap:8px; margin:10px 0; padding:0 16px; flex-wrap:wrap; justify-content:center }
+    .chip{ padding:6px 12px; border-radius:16px; background:var(--chip); color:var(--text); font-size:14px }
+    .chip.active{ background:var(--primary); color:#fff }
+
+    /* Ribbon blocks */
+    .ribbon{ width:92%; display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin:8px 0 }
+    .block{
+      position:relative; padding:12px 10px; border-radius:12px; background:#F7F9FC;
+      min-height:62px; display:flex; flex-direction:column; justify-content:space-between;
+      border:1px solid #E6ECF3;
+    }
+    .block.current{ outline:2px solid var(--primary); background:#F2F7FF }
+    .block .title{ font-size:12px; color:#607D8B }
+    .block .band{ font-size:14px; font-weight:600 }
+    .block .delta{ font-size:11px; color:#607D8B; align-self:flex-end }
+    .badge-now{
+      position:absolute; top:6px; right:6px; background:var(--badge); color:#B71C1C;
+      font-size:10px; padding:2px 6px; border-radius:999px;
+    }
+
+    .legend{ width:92%; display:flex; gap:8px; justify-content:center; margin-top:4px; font-size:12px; color:#607D8B }
+    .legend .dot{ width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:6px; vertical-align:middle }
+
+    .cards{ display:flex; gap:8px; width:92%; margin:8px 0 }
     .card{ flex:1; padding:8px; border-radius:10px; background:#F7F9FC; text-align:center; font-size:13px }
+
     .ad{ width:100%; height:100px; background:var(--ad); margin-top:auto; display:flex; align-items:center; justify-content:center; color:#555; font-size:14px }
+
     .toast{ position:fixed; top:8px; left:50%; transform:translateX(-50%); background:#000a; color:#fff; padding:6px 10px; border-radius:8px; font-size:12px; display:none; z-index:99 }
   </style>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
   <div class="toast" id="toast"></div>
@@ -58,15 +80,19 @@
 
     <div class="chips" id="chips"></div>
 
-    <div id="chart-wrap">
-      <canvas id="weatherChart"></canvas>
+    <div class="ribbon" id="ribbon"></div>
+    <div class="legend">
+      <span><span class="dot" style="background:#C5E6FF"></span>시원</span>
+      <span><span class="dot" style="background:#E7F2FF"></span>적당</span>
+      <span><span class="dot" style="background:#FFE8C5"></span>따뜻</span>
+      <span><span class="dot" style="background:#FFD0D0"></span>더움</span>
     </div>
 
     <div class="cards">
       <div class="card" id="rainCard">강수: -</div>
       <div class="card" id="windCard">바람: -</div>
       <div class="card" id="uvCard">UV: -</div>
-      <div class="card" id="humidCard">습기(이슬점): -</div>
+      <div class="card" id="humidCard">습기 체감: -</div>
     </div>
   </div>
 
@@ -80,7 +106,6 @@ const toast = (msg)=>{
   setTimeout(()=> el.style.display='none', 2400);
 };
 
-// 날짜
 function fmt(d){ const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), dd=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${dd}`; }
 function getDates(){
   const now=new Date();
@@ -90,19 +115,16 @@ function getDates(){
   return { today: fmt(today), yesterday: fmt(yest), tomorrow: fmt(tomo) };
 }
 
-// API
 async function fetchWeather(lat, lon){
   const { today, tomorrow, yesterday } = getDates();
   const base = "https://api.open-meteo.com/v1/forecast";
-  // 오늘+내일 한 번에
   const paramsTD = new URLSearchParams({
     latitude: lat, longitude: lon,
-    hourly: "temperature_2m,relativehumidity_2m,dewpoint_2m,windspeed_10m,precipitation_probability,uv_index",
+    hourly: "temperature_2m,dewpoint_2m,windspeed_10m,precipitation_probability,uv_index",
     daily: "uv_index_max",
     timezone: "auto",
     start_date: today, end_date: tomorrow
   });
-  // 어제(그래프 비교용)
   const paramsY = new URLSearchParams({
     latitude: lat, longitude: lon,
     hourly: "temperature_2m",
@@ -115,10 +137,10 @@ async function fetchWeather(lat, lon){
 }
 
 const buckets = [
-  { name:"아침",  range:[6,9] },
-  { name:"점심",  range:[12,15] },
-  { name:"저녁",  range:[18,21] },
-  { name:"밤",    range:[21,23], alt:[0,3] }
+  { key:"아침",  range:[6,9] },
+  { key:"점심",  range:[12,15] },
+  { key:"저녁",  range:[18,21] },
+  { key:"밤",    range:[21,23], alt:[0,3] }
 ];
 function avg(arr, s, e){ const a=arr.slice(s, e+1); return a.reduce((x,y)=>x+y,0)/a.length; }
 function avgBucket(arr, {range, alt}){
@@ -127,52 +149,71 @@ function avgBucket(arr, {range, alt}){
   const a = avg(arr, alt[0], alt[1]);
   return (main*3 + a*1)/4;
 }
-function tempBand(t){ if (t<=5) return 0; if (t<=15) return 1; if (t<=25) return 2; return 3; }
+function median(values){
+  const a = values.slice().sort((x,y)=>x-y); const n=a.length;
+  return n? (n%2? a[Math.floor(n/2)] : (a[n/2-1]+a[n/2])/2) : 0;
+}
+function quantile(values, q){
+  const a = values.slice().sort((x,y)=>x-y); const pos = (a.length-1)*q;
+  const base = Math.floor(pos), rest = pos - base;
+  if (a.length===0) return 0;
+  if (a[base+1]!==undefined) return a[base] + rest*(a[base+1]-a[base]);
+  return a[base];
+}
 
-const state = { view:'today', data:null, locLabel:'' };
+const state = { view:'today', data:null };
 
 function splitByDate(hourly){
-  const map = {}; // date -> indices
+  const map = {};
   hourly.time.forEach((iso, i)=>{
-    const d = new Date(iso); const key = fmt(new Date(d.getFullYear(), d.getMonth(), d.getDate()));
-    if (!map[key]) map[key]=[]; map[key].push(i);
+    const d = new Date(iso);
+    const key = fmt(new Date(d.getFullYear(), d.getMonth(), d.getDate()));
+    (map[key]||(map[key]=[])).push(i);
   });
   return map;
 }
 
-function build(td, y){
-  state.data = { td, y };
-  render();
-}
-
-function pickDayArrays(td, targetDate){
+function pickDay(td, dateStr){
   const h = td.hourly;
   const groups = splitByDate(h);
-  const idxs = groups[targetDate];
+  const idxs = groups[dateStr];
   if (!idxs) return null;
-  const pick = (arr)=> idxs.map(i=> arr[i]);
+  const pick = (arr)=> arr? idxs.map(i=> arr[i]) : [];
   return {
     t: pick(h.temperature_2m),
-    rh: h.relativehumidity_2m ? pick(h.relativehumidity_2m): [],
-    dp: h.dewpoint_2m ? pick(h.dewpoint_2m): [],
-    wind: h.windspeed_10m ? pick(h.windspeed_10m): [],
-    rain: h.precipitation_probability ? pick(h.precipitation_probability): [],
-    uvh: h.uv_index ? pick(h.uv_index): [],
-    uvmax: td.daily?.uv_index_max?.[ (td.daily.time||[]).indexOf(targetDate) ] ?? null
+    dp: pick(h.dewpoint_2m),
+    wind: pick(h.windspeed_10m),
+    rain: pick(h.precipitation_probability),
+    uvh: pick(h.uv_index),
+    uvmax: td.daily?.uv_index_max?.[ (td.daily.time||[]).indexOf(dateStr) ] ?? null
   };
 }
 
-function headlineAndChips(dayArr, compareArr){
-  const tAvgDay = dayArr.t.reduce((a,b)=>a+b,0)/dayArr.t.length;
-  const tAvgCmp = compareArr.t.reduce((a,b)=>a+b,0)/compareArr.t.length;
-  const delta = tAvgDay - tAvgCmp;
+function bandFromTemp(t, dp, thresholds){
+  // thresholds: {p25, p50, p75}
+  // 습기 보정: dp>=22 → 한 단계 상향
+  let idx = 1; // 적당 기본
+  if (t < thresholds.p25) idx = 0;      // 시원
+  else if (t < thresholds.p50) idx = 1; // 적당
+  else if (t < thresholds.p75) idx = 2; // 따뜻
+  else idx = 3;                         // 더움
+  if (typeof dp === 'number' && dp >= 22) idx = Math.min(3, idx+1);
+  return idx;
+}
+const bandLabel = ["시원","적당","따뜻","더움"];
+const bandBg = ["#C5E6FF","#E7F2FF","#FFE8C5","#FFD0D0"];
 
-  // 정오 기준 데이터
-  function bucketAvg(arr, s=12, e=15){ return arr.length? avg(arr, s, e): null; }
-  const dp = bucketAvg(dayArr.dp);
-  const rain = bucketAvg(dayArr.rain) ?? 0;
-  const wind = bucketAvg(dayArr.wind) ?? 0;
-  const uv = bucketAvg(dayArr.uvh) ?? (dayArr.uvmax ?? 0);
+function headlineAndChips(day, ref){
+  const tAvg = day.t.reduce((a,b)=>a+b,0)/day.t.length;
+  const rAvg = ref.t.reduce((a,b)=>a+b,0)/ref.t.length;
+  const delta = tAvg - rAvg;
+
+  // 정오 기준(12~15) 또는 가장 가까운 대체
+  const s=12,e=15;
+  const dp = day.dp.length ? avg(day.dp,s,e) : null;
+  const rain = day.rain.length ? avg(day.rain,s,e) : 0;
+  const wind = day.wind.length ? avg(day.wind,s,e) : 0;
+  const uv = day.uvh.length ? avg(day.uvh,11,13) : (day.uvmax ?? 0);
 
   let tempPhrase = "비슷하게 느껴져요";
   if (delta > 1.5) tempPhrase = "조금 더 포근해요";
@@ -195,32 +236,26 @@ function headlineAndChips(dayArr, compareArr){
   if (wind >= 7)  chips.push("🧥 바람막이");
   if (uv >= 7)    chips.push("🧴 선크림/모자");
 
-  const uniq = Array.from(new Set(chips)).slice(0,3);
-
   return {
-    tempPhrase, humidityPhrase, chips: uniq,
+    headline: `${tempPhrase}. ${humidityPhrase} ☀`,
+    chips: Array.from(new Set(chips)).slice(0,3),
     noon: { rain, wind, uv, dp }
   };
 }
 
 function render(){
   const { today, tomorrow, yesterday } = getDates();
-  const td = state.data.td; const y = state.data.y;
+  const td = state.data.td, y = state.data.y;
 
-  const todayArr = pickDayArrays(td, today);
-  const tomorrowArr = pickDayArrays(td, tomorrow);
-  const yesterdayTemps = y.hourly.temperature_2m;
+  const dayT = pickDay(td, state.view==='today'? today : tomorrow);
+  const refT = state.view==='today'
+    ? { t: y.hourly.temperature_2m }
+    : pickDay(td, today);
 
-  // headline + chips + cards
-  let h, refLabel;
-  if (state.view === 'today'){
-    h = headlineAndChips(todayArr, { t: yesterdayTemps });
-    refLabel = "오늘은 어제보다";
-  }else{
-    h = headlineAndChips(tomorrowArr, todayArr);
-    refLabel = "내일은 오늘보다";
-  }
-  document.getElementById('headline').textContent = `${refLabel} ${h.tempPhrase}. ${h.humidityPhrase} ☀`;
+  // 헤드라인 & 칩 & 카드
+  const h = headlineAndChips(dayT, refT);
+  const headLabel = state.view==='today' ? "오늘은 어제보다 " : "내일은 오늘보다 ";
+  document.getElementById('headline').textContent = headLabel + h.headline;
 
   const chipsEl = document.getElementById('chips'); chipsEl.innerHTML = "";
   h.chips.forEach((t,i)=>{
@@ -228,84 +263,68 @@ function render(){
     d.className = 'chip' + (i===0?' active':'');
     d.textContent = t; chipsEl.appendChild(d);
   });
-
   document.getElementById('rainCard').textContent = `강수: ${Math.round(h.noon.rain ?? 0)}%`;
   document.getElementById('windCard').textContent = `바람: ${(h.noon.wind ?? 0).toFixed(1)} m/s`;
   document.getElementById('uvCard').textContent   = `UV: ${Math.round(h.noon.uv ?? 0)} (정오)`;
   const dp = h.noon.dp ?? 0;
-  const dpText = (dp>=24)?'매우 습함':(dp>=22)?'꽤 습함':(dp>=19)?'살짝 습함':'상쾌함';
-  document.getElementById('humidCard').textContent= `습기(이슬점): ${dpText} · ${dp?dp.toFixed(1):'0.0'}°C`;
+  const dpText = (dp>=24)?'매우 습함':(dp>=22)?'꽤 습함':(dp>=19)?'살짝 습함':'상쾌';
+  document.getElementById('humidCard').textContent= `습기 체감: ${dpText}`;
 
-  // 미니멀 그래프: 4구간, 카테고리 0~3
-  const yestArr = yesterdayTemps;
-  const tToday = todayArr.t, tTomo = tomorrowArr.t;
+  // 계절 적응형 임계값 계산(간단 버전)
+  // 오늘 보기: yesterday+today, 내일 보기: today+tomorrow
+  const setA = (state.view==='today')
+    ? (pickDay(td, today).t).concat(refT.t)  // today + yesterday
+    : (dayT.t).concat(pickDay(td, today).t); // tomorrow + today
+  const p25 = quantile(setA, 0.25), p50 = quantile(setA, 0.50), p75 = quantile(setA, 0.75);
+  const thresholds = {p25, p50, p75};
 
-  function ySeriesFrom(arr){
-    const ys = buckets.map(b => avgBucket(arr, b)).map(tempBand);
-    return ys;
+  // 블록 렌더
+  const ribbon = document.getElementById('ribbon'); ribbon.innerHTML = "";
+  const now = new Date(); const hour = now.getHours();
+  function inRange(h, s,e){ return h>=s && h<=e; }
+  function isCurrentBucket(b){
+    if (b.key==="아침") return inRange(hour,6,9);
+    if (b.key==="점심") return inRange(hour,12,15);
+    if (b.key==="저녁") return inRange(hour,18,21);
+    if (b.key==="밤")   return inRange(hour,21,23) || inRange(hour,0,3);
+    return false;
   }
 
-  let s1, s2, labels = ["아침","점심","저녁","밤"];
-  if (state.view === 'today'){
-    s1 = ySeriesFrom(yestArr); s2 = ySeriesFrom(tToday);
-  } else {
-    s1 = ySeriesFrom(tToday);  s2 = ySeriesFrom(tTomo);
-  }
+  buckets.forEach(b=>{
+    const tDay = avgBucket(dayT.t, b);
+    const tRef = avgBucket(refT.t, b);
+    const dpB  = dayT.dp.length ? avgBucket(dayT.dp, b) : null;
+    const bandIdx = bandFromTemp(tDay, dpB, thresholds);
+    const delta = Math.round((tDay - tRef) * 10)/10;
+    const arrow = delta>0 ? "▲" : (delta<0 ? "▼" : "—");
+    const deltaStr = (delta>0? "+" : (delta<0? "" : "")) + delta + "°";
 
-  drawMinimalChart(labels, s1, s2);
-}
-
-function drawMinimalChart(labels, y1, y2){
-  const ctx = document.getElementById('weatherChart');
-  const now = new Date(); let idxNow = 3;
-  const h = now.getHours();
-  if (h>=6 && h<=9) idxNow = 0; else if (h>=12 && h<=15) idxNow = 1; else if (h>=18 && h<=21) idxNow = 2;
-
-  const nowDotPlugin = {
-    id:'nowDot',
-    afterDatasetsDraw(chart){
-      const {ctx, chartArea:{top,bottom}, scales:{x,y}} = chart;
-      const xPos = x.getPixelForValue(idxNow);
-      ctx.save(); ctx.fillStyle='red'; ctx.beginPath(); ctx.arc(xPos, (top+bottom)/2, 3, 0, Math.PI*2); ctx.fill(); ctx.restore();
+    const div = document.createElement('div');
+    div.className = 'block' + (isCurrentBucket(b)? ' current' : '');
+    div.innerHTML = `
+      <div class="title">${b.key}</div>
+      <div class="band" style="color:#111">${bandLabel[bandIdx]}</div>
+      <div class="delta">${arrow} ${deltaStr}</div>
+    `;
+    if (isCurrentBucket(b)){
+      const badge = document.createElement('div');
+      badge.className = 'badge-now';
+      badge.textContent = '지금';
+      div.appendChild(badge);
     }
-  };
-
-  if (window.__jigiChart){ window.__jigiChart.destroy(); }
-  window.__jigiChart = new Chart(ctx, {
-    type:'line',
-    data:{
-      labels,
-      datasets:[
-        { label:'기준', data:y1, tension:0.3, borderColor:'#B0BEC5', pointRadius:2 },
-        { label:'비교', data:y2, tension:0.3, borderColor:getComputedStyle(document.documentElement).getPropertyValue('--primary').trim(), pointRadius:3 }
-      ]
-    },
-    options:{
-      responsive:true, maintainAspectRatio:false,
-      plugins:{ legend:{ display:false } },
-      layout:{ padding:{ left:8, right:8, top:4, bottom:0 } },
-      scales:{
-        x:{ grid:{ display:false } },
-        y:{
-          min:0, max:3, grid:{ display:false },
-          ticks:{ callback:(v)=> v===0?"춥다":(v===3?"더움":""), maxTicksLimit:2 }
-        }
-      },
-      animation:false
-    },
-    plugins:[nowDotPlugin]
+    div.style.background = bandBg[bandIdx];
+    ribbon.appendChild(div);
   });
 }
 
-// 위치
 async function init(lat, lon, label=""){
   document.getElementById('locLabel').textContent = label || `위치: ${lat.toFixed(3)}, ${lon.toFixed(3)}`;
   try{
     const { td, y } = await fetchWeather(lat, lon);
-    build(td, y);
+    state.data = { td, y };
+    render();
   }catch(e){
-    const el = document.getElementById('headline');
-    el.textContent = "데이터를 불러오지 못했어요. 네트워크를 확인해주세요.";
+    document.getElementById('headline').textContent = "데이터를 불러오지 못했어요. 네트워크를 확인해주세요.";
     console.error(e);
   }
 }
@@ -323,7 +342,6 @@ function useGeolocation(){
   );
 }
 
-// 토글
 document.getElementById('tgToday').addEventListener('click', ()=>{
   state.view='today';
   document.getElementById('tgToday').classList.add('active');
@@ -336,11 +354,8 @@ document.getElementById('tgTomorrow').addEventListener('click', ()=>{
   document.getElementById('tgToday').classList.remove('active');
   render();
 });
-
-// 새로고침
 document.getElementById('btnRefresh').addEventListener('click', ()=> useGeolocation());
 
-// 시작
 useGeolocation();
 </script>
 </body>
