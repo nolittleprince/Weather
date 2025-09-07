@@ -1,129 +1,150 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <title>JIGI v0.4</title>
+  <meta charset="UTF-8" />
+  <title>JIGI v0.4.1</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    body {
-      margin: 0; font-family: Pretendard, sans-serif;
-      background: #FFFFFF; color: #424242;
-      display: flex; flex-direction: column; align-items: center;
+    :root{
+      --primary:#1976D2;        /* 포인트 블루 */
+      --text:#424242;           /* 기본 텍스트 */
+      --muted:#B0BEC5;          /* 회색(어제 라인/비활성 칩) */
+      --bg:#FFFFFF;             /* 배경 */
+      --chip:#F2F6FA;           /* 칩 배경 */
+      --ad:#E0E0E0;             /* 배너 자리 */
+      --yellow:#FFD95A;         /* 맑음 */
+      --mint:#66D9E8;           /* 상쾌 */
+      --orange:#FF7043;         /* 더움 */
+      --rain:#4A90E2;           /* 비 */
     }
-    header { text-align: center; padding: 16px; }
-    h1 { margin: 0; font-size: 24px; color: #1976D2; }
-    .headline { font-size: 18px; margin: 8px 0; color: #424242; }
-    .slogan { font-size: 14px; color: #666; }
-    .chips { display: flex; gap: 8px; margin: 12px 0; }
-    .chip {
-      padding: 6px 12px; border-radius: 16px; background: #B0BEC5;
-      color: white; font-size: 14px;
+    *{box-sizing:border-box}
+    body{
+      margin:0; background:var(--bg); color:var(--text);
+      font-family:Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+      display:flex; flex-direction:column; align-items:center; min-height:100svh;
     }
-    .chip.active { background: #1976D2; }
-    #chart-container { width: 90%; height: 200px; margin: 12px 0; }
-    .cards { display: flex; gap: 8px; margin: 12px 0; }
-    .card {
-      flex: 1; padding: 8px; border-radius: 8px;
-      background: #F5F5F5; text-align: center;
-      font-size: 14px;
-    }
-    .section { width: 90%; margin: 12px 0; }
-    .banner { width: 100%; height: 60px; background: #CCC; text-align: center; line-height: 60px; margin-top: auto; }
+    header{ width:100%; padding:16px 20px; text-align:center}
+    h1{ margin:0; font-size:24px; color:var(--primary); letter-spacing:0.5px }
+    .headline{ font-size:16px; margin-top:8px }
+    .chips{ display:flex; gap:8px; margin:12px 0; padding:0 16px; flex-wrap:wrap; justify-content:center }
+    .chip{ padding:6px 12px; border-radius:16px; background:var(--chip); color:var(--text); font-size:14px }
+    .chip.active{ background:var(--primary); color:#fff }
+    .wrap{ width:100%; max-width:720px; display:flex; flex-direction:column; align-items:center }
+    #chart-wrap{ width:92%; height:220px; margin:8px 0 6px }
+    canvas{ width:100% !important; height:100% !important; }
+    .cards{ display:flex; gap:8px; width:92%; margin:8px 0 }
+    .card{ flex:1; padding:8px; border-radius:10px; background:#F7F9FC; text-align:center; font-size:13px }
+    .placeholder{ width:92%; margin:8px 0; padding:10px; border-radius:10px; background:#F3F3F3; text-align:center; font-size:13px; color:#666; display:none } /* 전광판 임시 비활성 */
+    .ad{ width:100%; height:100px; background:var(--ad); margin-top:auto; display:flex; align-items:center; justify-content:center; color:#555; font-size:14px }
+    /* OOTD 미리보기 버튼 (추후 카메라 오버레이용) */
+    .toolbar{ width:92%; display:flex; justify-content:flex-end; gap:8px; margin:6px 0 4px }
+    .btn{ padding:8px 10px; border:none; border-radius:10px; background:#EEF4FF; color:var(--primary); font-weight:600; font-size:12px }
   </style>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
   <header>
     <h1>JIGI</h1>
     <div class="headline" id="headline">오늘은 어제보다 조금 더 포근해요 ☀</div>
-    <div class="slogan">Compared to yesterday</div>
   </header>
 
-  <div class="chips" id="chips"></div>
+  <div class="wrap">
+    <div class="chips" id="chips"></div>
 
-  <div id="chart-container">
-    <canvas id="weatherChart"></canvas>
+    <div id="chart-wrap">
+      <canvas id="weatherChart"></canvas>
+    </div>
+
+    <div class="cards">
+      <div class="card" id="rainCard">강수: 20%</div>
+      <div class="card" id="windCard">바람: 3 m/s</div>
+      <div class="card" id="uvCard">UV: 보통</div>
+    </div>
+
+    <div class="toolbar">
+      <button class="btn" id="btn-ootd" title="(미리보기) 카메라 오버레이">OOTD 프레임 미리보기</button>
+    </div>
+
+    <!-- 전광판 placeholder는 현재 미노출 (display:none) -->
+    <div class="placeholder">특파원 멘트 공간 (후속 업데이트에서 활성화)</div>
   </div>
 
-  <div class="cards">
-    <div class="card" id="rainCard">강수: 20%</div>
-    <div class="card" id="windCard">바람: 3m/s</div>
-    <div class="card" id="uvCard">UV: 보통</div>
-  </div>
-
-  <div class="section">
-    <h3>오늘 기록</h3>
-    <textarea id="note" placeholder="오늘의 착장을 메모하세요" rows="2" style="width:100%;"></textarea><br>
-    <button onclick="saveNote('good')">편했어요</button>
-    <button onclick="saveNote('bad')">불편했어요</button>
-  </div>
-
-  <div class="section">
-    <h3>특파원 멘트 공간</h3>
-    <div style="background:#EEE; height:40px; display:flex; align-items:center; justify-content:center;">(전광판 placeholder)</div>
-  </div>
-
-  <div class="banner">Ad banner</div>
+  <div class="ad">Ad banner (320×100)</div>
 
 <script>
-// 더미 데이터: 어제/오늘 시간대별 온도
-const hours = Array.from({length: 25}, (_, i) => i);
-const yesterdayTemps = hours.map(h => 15 + Math.sin(h/24*2*Math.PI)*3);
-const todayTemps = hours.map(h => 18 + Math.sin(h/24*2*Math.PI)*4);
+// ---------- 더미 데이터 생성 ----------
+const hours = Array.from({length:25}, (_,i)=>i);
+const yesterdayTemps = hours.map(h => 16 + Math.sin(h/24 * 2*Math.PI)*3);
+const todayTemps     = hours.map(h => 18 + Math.sin(h/24 * 2*Math.PI)*4);
 const nowHour = new Date().getHours();
 
-// 그래프
-const ctx = document.getElementById('weatherChart').getContext('2d');
-new Chart(ctx, {
-  type: 'line',
-  data: {
+// ---------- TipChips (예시) ----------
+const chipsData = [
+  { text:"🌧 레인기어", active:false },
+  { text:"🧥 레이어드", active:true },
+  { text:"🧴 선크림", active:false }
+];
+const chipsEl = document.getElementById('chips');
+chipsData.forEach(c=>{
+  const d=document.createElement('div');
+  d.className='chip'+(c.active?' active':'');
+  d.textContent=c.text;
+  chipsEl.appendChild(d);
+});
+
+// ---------- Chart.js: 가운데 정렬 + 현재시간 라인 플러그인 ----------
+const ctx = document.getElementById('weatherChart');
+const nowLinePlugin = {
+  id: 'nowLine',
+  afterDatasetsDraw(chart, args, pluginOptions) {
+    const {ctx, chartArea:{top,bottom}, scales:{x}} = chart;
+    const xPos = x.getPixelForValue(nowHour);
+    ctx.save();
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = 'red';
+    ctx.setLineDash([4,4]);
+    ctx.beginPath();
+    ctx.moveTo(xPos, top);
+    ctx.lineTo(xPos, bottom);
+    ctx.stroke();
+    ctx.restore();
+  }
+};
+
+const chart = new Chart(ctx, {
+  type:'line',
+  data:{
     labels: hours,
-    datasets: [
-      { label: '어제', data: yesterdayTemps, borderColor: '#B0BEC5', fill: false },
-      { label: '오늘', data: todayTemps, borderColor: '#1976D2', fill: false }
+    datasets:[
+      { label:'어제', data:yesterdayTemps, tension:0.3, borderColor:'#B0BEC5', pointRadius:0 },
+      { label:'오늘', data:todayTemps, tension:0.3, borderColor:getComputedStyle(document.documentElement).getPropertyValue('--primary').trim(), pointRadius:0 }
     ]
   },
-  options: {
-    responsive: true,
-    plugins: { legend: { display: false } },
-    scales: { y: { beginAtZero: false } },
-    animation: false
-  }
+  options:{
+    responsive:true,
+    maintainAspectRatio:false,
+    plugins:{ legend:{ display:false } },
+    layout:{ padding:{ left:8, right:8, top:4, bottom:0 } },
+    scales:{
+      x:{ grid:{ display:false }, ticks:{ maxTicksLimit:9 } },
+      y:{ grid:{ color:'#ECEFF1' }, ticks:{ callback:(v)=>v+'°' } }
+    },
+    animation:false
+  },
+  plugins:[nowLinePlugin]
 });
 
-// 현재시간 라인 수동 표시 (Chart.js plugin 대신 간단히)
-const canvas = document.getElementById('weatherChart');
-const ctx2 = canvas.getContext('2d');
-canvas.addEventListener('mousemove', () => {}); // force context init
-setTimeout(() => {
-  ctx2.strokeStyle = 'red';
-  ctx2.beginPath();
-  ctx2.moveTo((nowHour/24)*canvas.width, 0);
-  ctx2.lineTo((nowHour/24)*canvas.width, canvas.height);
-  ctx2.stroke();
-}, 500);
+// ---------- 헤드라인 예시 (데이터 매핑 자리) ----------
+const headline = document.getElementById('headline');
+const deltaAvg = (todayTemps.reduce((a,b)=>a+b,0)/todayTemps.length) - (yesterdayTemps.reduce((a,b)=>a+b,0)/yesterdayTemps.length);
+headline.textContent = deltaAvg>1.5 ? "오늘은 어제보다 조금 더 포근해요 ☀" :
+                       deltaAvg<-1.5 ? "오늘은 어제보다 선선해요 🍃" :
+                                       "오늘은 어제와 비슷하게 느껴져요 🙂";
 
-// TipChips 로직 (더미)
-const chips = [
-  { text: "🧥 가벼운 겉옷", active: true },
-  { text: "☂ 우산", active: false },
-  { text: "🧴 선크림", active: false }
-];
-const chipContainer = document.getElementById('chips');
-chips.forEach(c => {
-  const div = document.createElement('div');
-  div.className = 'chip' + (c.active ? ' active' : '');
-  div.textContent = c.text;
-  chipContainer.appendChild(div);
+// ---------- OOTD 프레임 미리보기(카메라 오버레이 준비) ----------
+document.getElementById('btn-ootd').addEventListener('click', async ()=>{
+  alert("카메라 오버레이는 다음 단계에서 활성화됩니다.\n(iOS/안드로이드는 https 환경 + 사용자 허용 필요)");
 });
-
-// 개인 기록 저장
-function saveNote(feedback) {
-  const note = document.getElementById('note').value;
-  const today = new Date().toISOString().slice(0,10);
-  const data = { note, feedback };
-  localStorage.setItem('jigi_'+today, JSON.stringify(data));
-  alert("오늘 기록이 저장되었습니다!");
-}
 </script>
 </body>
 </html>
