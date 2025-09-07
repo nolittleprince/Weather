@@ -2,12 +2,12 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <title>JIGI v0.5</title>
+  <title>JIGI v0.5.2</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root{
       --primary:#1976D2; --text:#424242; --muted:#B0BEC5; --bg:#FFFFFF;
-      --chip:#F2F6FA; --ad:#E0E0E0; --yellow:#FFD95A; --mint:#66D9E8;
+      --chip:#F2F6FA; --ad:#E0E0E0;
     }
     *{box-sizing:border-box}
     body{
@@ -17,22 +17,23 @@
     }
     header{ width:100%; padding:16px 20px; text-align:center}
     h1{ margin:0; font-size:24px; color:var(--primary) }
-    .headline{ font-size:16px; margin-top:8px }
-    .toast{ position:fixed; top:8px; left:50%; transform:translateX(-50%); background:#000a; color:#fff; padding:6px 10px; border-radius:8px; font-size:12px; display:none; z-index:99 }
-    .chips{ display:flex; gap:8px; margin:12px 0; padding:0 16px; flex-wrap:wrap; justify-content:center }
+    .headline{ font-size:16px; margin-top:8px; text-align:center }
+    .chips{ display:flex; gap:8px; margin:10px 0; padding:0 16px; flex-wrap:wrap; justify-content:center }
     .chip{ padding:6px 12px; border-radius:16px; background:var(--chip); color:var(--text); font-size:14px }
     .chip.active{ background:var(--primary); color:#fff }
     .wrap{ width:100%; max-width:720px; display:flex; flex-direction:column; align-items:center }
-    #chart-wrap{ width:92%; height:220px; margin:8px 0 6px }
+    .toolbar{ width:92%; display:flex; justify-content:space-between; align-items:center; gap:8px; margin:6px 0 4px }
+    .loc{ font-size:12px; color:#666 }
+    .btn{ padding:8px 10px; border:none; border-radius:10px; background:#EEF4FF; color:var(--primary); font-weight:600; font-size:12px }
+    .toggle{ display:inline-flex; background:#EFF3F9; border-radius:12px; padding:2px; gap:2px }
+    .tgbtn{ border:none; background:transparent; padding:6px 10px; border-radius:10px; font-size:12px; color:#555 }
+    .tgbtn.active{ background:#fff; color:#000; box-shadow:0 1px 3px rgba(0,0,0,0.08) }
+    #chart-wrap{ width:92%; height:160px; margin:6px 0 }
     canvas{ width:100% !important; height:100% !important; }
-    .cards{ display:flex; gap:8px; width:92%; margin:8px 0 }
+    .cards{ display:flex; gap:8px; width:92%; margin:6px 0 }
     .card{ flex:1; padding:8px; border-radius:10px; background:#F7F9FC; text-align:center; font-size:13px }
     .ad{ width:100%; height:100px; background:var(--ad); margin-top:auto; display:flex; align-items:center; justify-content:center; color:#555; font-size:14px }
-    .toolbar{ width:92%; display:flex; justify-content:space-between; align-items:center; gap:8px; margin:6px 0 4px }
-    .btn{ padding:8px 10px; border:none; border-radius:10px; background:#EEF4FF; color:var(--primary); font-weight:600; font-size:12px }
-    .loc{ font-size:12px; color:#666 }
-    .spinner{ display:inline-block; width:14px; height:14px; border:2px solid #bcd; border-top-color:#1976D2; border-radius:50%; animation:spin 0.9s linear infinite; vertical-align:-2px }
-    @keyframes spin{ to{ transform:rotate(360deg) } }
+    .toast{ position:fixed; top:8px; left:50%; transform:translateX(-50%); background:#000a; color:#fff; padding:6px 10px; border-radius:8px; font-size:12px; display:none; z-index:99 }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
@@ -40,15 +41,18 @@
   <div class="toast" id="toast"></div>
   <header>
     <h1>JIGI</h1>
-    <div class="headline" id="headline">데이터 불러오는 중 <span class="spinner"></span></div>
+    <div class="headline" id="headline">데이터 불러오는 중…</div>
   </header>
 
   <div class="wrap">
     <div class="toolbar">
       <div class="loc" id="locLabel">위치 확인 중…</div>
-      <div>
+      <div style="display:flex; gap:8px; align-items:center">
+        <div class="toggle">
+          <button class="tgbtn active" id="tgToday">오늘</button>
+          <button class="tgbtn" id="tgTomorrow">내일</button>
+        </div>
         <button class="btn" id="btnRefresh">새로고침</button>
-        <button class="btn" id="btnUseSeoul">서울로 보기</button>
       </div>
     </div>
 
@@ -76,198 +80,232 @@ const toast = (msg)=>{
   setTimeout(()=> el.style.display='none', 2400);
 };
 
-// 날짜 계산(현지 시간 기준)
-function formatDate(d){
-  const y = d.getFullYear();
-  const m = String(d.getMonth()+1).padStart(2,'0');
-  const day = String(d.getDate()).padStart(2,'0');
-  return `${y}-${m}-${day}`;
-}
+// 날짜
+function fmt(d){ const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), dd=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${dd}`; }
 function getDates(){
-  const now = new Date();
+  const now=new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const yest = new Date(today); yest.setDate(yest.getDate()-1);
-  return { today: formatDate(today), yesterday: formatDate(yest) };
+  const tomo = new Date(today); tomo.setDate(tomo.getDate()+1);
+  return { today: fmt(today), yesterday: fmt(yest), tomorrow: fmt(tomo) };
 }
 
-// Open-Meteo 호출
+// API
 async function fetchWeather(lat, lon){
-  const { today, yesterday } = getDates();
+  const { today, tomorrow, yesterday } = getDates();
   const base = "https://api.open-meteo.com/v1/forecast";
-  const paramsToday = new URLSearchParams({
+  // 오늘+내일 한 번에
+  const paramsTD = new URLSearchParams({
     latitude: lat, longitude: lon,
     hourly: "temperature_2m,relativehumidity_2m,dewpoint_2m,windspeed_10m,precipitation_probability,uv_index",
     daily: "uv_index_max",
     timezone: "auto",
-    start_date: today,
-    end_date: today
+    start_date: today, end_date: tomorrow
   });
-  const paramsYesterday = new URLSearchParams({
+  // 어제(그래프 비교용)
+  const paramsY = new URLSearchParams({
     latitude: lat, longitude: lon,
     hourly: "temperature_2m",
     timezone: "auto",
-    start_date: yesterday,
-    end_date: yesterday
+    start_date: yesterday, end_date: yesterday
   });
-  const [resT, resY] = await Promise.all([
-    fetch(`${base}?${paramsToday}`),
-    fetch(`${base}?${paramsYesterday}`)
-  ]);
-  if (!resT.ok || !resY.ok) throw new Error("데이터 로드 실패");
-  const todayJson = await resT.json();
-  const yestJson = await resY.json();
-  return { todayJson, yestJson };
+  const [resTD, resY] = await Promise.all([ fetch(`${base}?${paramsTD}`), fetch(`${base}?${paramsY}`) ]);
+  if (!resTD.ok || !resY.ok) throw new Error("데이터 로드 실패");
+  return { td: await resTD.json(), y: await resY.json() };
 }
 
-const state = {
-  chart:null, hours:Array.from({length:25},(_,i)=>i)
-};
+const buckets = [
+  { name:"아침",  range:[6,9] },
+  { name:"점심",  range:[12,15] },
+  { name:"저녁",  range:[18,21] },
+  { name:"밤",    range:[21,23], alt:[0,3] }
+];
+function avg(arr, s, e){ const a=arr.slice(s, e+1); return a.reduce((x,y)=>x+y,0)/a.length; }
+function avgBucket(arr, {range, alt}){
+  const main = avg(arr, range[0], range[1]);
+  if (!alt) return main;
+  const a = avg(arr, alt[0], alt[1]);
+  return (main*3 + a*1)/4;
+}
+function tempBand(t){ if (t<=5) return 0; if (t<=15) return 1; if (t<=25) return 2; return 3; }
 
-function avg(arr, s, e){
-  const slice = arr.slice(s, e+1);
-  return slice.reduce((a,b)=>a+b,0)/slice.length;
+const state = { view:'today', data:null, locLabel:'' };
+
+function splitByDate(hourly){
+  const map = {}; // date -> indices
+  hourly.time.forEach((iso, i)=>{
+    const d = new Date(iso); const key = fmt(new Date(d.getFullYear(), d.getMonth(), d.getDate()));
+    if (!map[key]) map[key]=[]; map[key].push(i);
+  });
+  return map;
 }
 
-function buildFromData(todayJson, yestJson){
-  const h = todayJson.hourly;
-  const hours = h.time.map(t => new Date(t).getHours()); // 0~23
-  // 일부 모델은 0~23만 제공 → 24 길이로 사용
-  const todayTemps = h.temperature_2m;
-  const yestTemps = yestJson.hourly.temperature_2m;
+function build(td, y){
+  state.data = { td, y };
+  render();
+}
 
-  // RH/DP/Wind/Rain/UV
-  const rhToday = h.relativehumidity_2m || h.relative_humidity_2m || [];
-  const dpToday = h.dewpoint_2m || [];
-  const windToday = h.windspeed_10m || [];
-  const rainProb = h.precipitation_probability || [];
-  // UV: 시간대별이 없으면 일일 최대(daily)로 대체
-  const uvHourly = h.uv_index || [];
-  const uvDailyMax = todayJson.daily?.uv_index_max?.[0] ?? null;
+function pickDayArrays(td, targetDate){
+  const h = td.hourly;
+  const groups = splitByDate(h);
+  const idxs = groups[targetDate];
+  if (!idxs) return null;
+  const pick = (arr)=> idxs.map(i=> arr[i]);
+  return {
+    t: pick(h.temperature_2m),
+    rh: h.relativehumidity_2m ? pick(h.relativehumidity_2m): [],
+    dp: h.dewpoint_2m ? pick(h.dewpoint_2m): [],
+    wind: h.windspeed_10m ? pick(h.windspeed_10m): [],
+    rain: h.precipitation_probability ? pick(h.precipitation_probability): [],
+    uvh: h.uv_index ? pick(h.uv_index): [],
+    uvmax: td.daily?.uv_index_max?.[ (td.daily.time||[]).indexOf(targetDate) ] ?? null
+  };
+}
 
-  // 구간 평균 (아침/정오/저녁)
-  const morning = {
-    t: avg(todayTemps, 6, 9),
-    rh: rhToday.length? avg(rhToday, 6, 9): null,
-    dp: dpToday.length? avg(dpToday, 6, 9): null,
-    wind: windToday.length? avg(windToday, 6, 9): null,
-    rain: rainProb.length? avg(rainProb, 6, 9): 0,
-    uv: uvHourly.length? avg(uvHourly, 11, 13): (uvDailyMax ?? 0)
-  };
-  const noon = {
-    t: avg(todayTemps, 12, 15),
-    rh: rhToday.length? avg(rhToday, 12, 15): null,
-    dp: dpToday.length? avg(dpToday, 12, 15): null,
-    wind: windToday.length? avg(windToday, 12, 15): null,
-    rain: rainProb.length? avg(rainProb, 12, 15): 0,
-    uv: uvHourly.length? avg(uvHourly, 11, 13): (uvDailyMax ?? 0)
-  };
-  const eve = {
-    t: avg(todayTemps, 18, 21),
-    rh: rhToday.length? avg(rhToday, 18, 21): null,
-    dp: dpToday.length? avg(dpToday, 18, 21): null,
-    wind: windToday.length? avg(windToday, 18, 21): null,
-    rain: rainProb.length? avg(rainProb, 18, 21): 0,
-    uv: uvHourly.length? avg(uvHourly, 17, 19): 0
-  };
+function headlineAndChips(dayArr, compareArr){
+  const tAvgDay = dayArr.t.reduce((a,b)=>a+b,0)/dayArr.t.length;
+  const tAvgCmp = compareArr.t.reduce((a,b)=>a+b,0)/compareArr.t.length;
+  const delta = tAvgDay - tAvgCmp;
 
-  // 헤드라인(온도 변화 + 이슬점)
-  const avgToday = todayTemps.reduce((a,b)=>a+b,0)/todayTemps.length;
-  const avgYest  = yestTemps.reduce((a,b)=>a+b,0)/yestTemps.length;
-  const delta = avgToday - avgYest;
-  const dp = noon.dp ?? morning.dp ?? eve.dp ?? 0;
+  // 정오 기준 데이터
+  function bucketAvg(arr, s=12, e=15){ return arr.length? avg(arr, s, e): null; }
+  const dp = bucketAvg(dayArr.dp);
+  const rain = bucketAvg(dayArr.rain) ?? 0;
+  const wind = bucketAvg(dayArr.wind) ?? 0;
+  const uv = bucketAvg(dayArr.uvh) ?? (dayArr.uvmax ?? 0);
+
+  let tempPhrase = "비슷하게 느껴져요";
+  if (delta > 1.5) tempPhrase = "조금 더 포근해요";
+  else if (delta < -1.5) tempPhrase = "조금 더 선선해요";
 
   let humidityPhrase = "공기는 비교적 상쾌해요";
-  if (dp >= 24) humidityPhrase = "공기가 아주 끈적해요";
-  else if (dp >= 22) humidityPhrase = "공기가 꽤 습해요";
-  else if (dp >= 19) humidityPhrase = "공기가 살짝 습해요";
-
-  let tempPhrase = "어제와 비슷하게 느껴져요";
-  if (delta > 1.5) tempPhrase = "어제보다 조금 더 포근해요";
-  else if (delta < -1.5) tempPhrase = "어제보다 선선해요";
-
-  document.getElementById('headline').textContent =
-    `오늘은 ${tempPhrase}. ${humidityPhrase} ☀`;
-
-  // TipChips
-  const chips = [];
-  if (dp >= 24) chips.push("🧵 초경량+통풍");
-  else if (dp >= 22) chips.push("🧵 가벼운 원단");
-  else if (dp >= 19) chips.push("🧵 통풍 좋은 옷");
-
-  if ((noon.rain ?? 0) >= 60) chips.push("☂ 우산 챙기기");
-  if ((noon.wind ?? 0) >= 7)  chips.push("🧥 바람막이");
-  if ((noon.uv ?? 0) >= 7)    chips.push("🧴 선크림/모자");
-
-  const diurnalRange = Math.max(...todayTemps) - Math.min(...todayTemps);
-  if (diurnalRange >= 8) chips.push("🧥 겉옷 챙기기");
-  if (noon.t >= 30 && !chips.includes("🧵 통풍 좋은 옷")) chips.unshift("🧵 통풍 좋은 옷");
-
-  // 바람이 강하면 습기 칩 한단계 낮춤
-  if ((noon.wind ?? 0) >= 6){
-    const idx = chips.findIndex(c => c.includes("🧵"));
-    if (idx > 0){ const it = chips.splice(idx,1)[0]; chips.splice(1,0,it); }
+  if (dp !== null){
+    if (dp >= 24) humidityPhrase = "공기가 아주 끈적해요";
+    else if (dp >= 22) humidityPhrase = "공기가 꽤 습해요";
+    else if (dp >= 19) humidityPhrase = "공기가 살짝 습해요";
   }
+
+  const chips = [];
+  if (dp !== null){
+    if (dp >= 24) chips.push("🧵 초경량+통풍");
+    else if (dp >= 22) chips.push("🧵 가벼운 원단");
+    else if (dp >= 19) chips.push("🧵 통풍 좋은 옷");
+  }
+  if (rain >= 60) chips.push("☂ 우산 챙기기");
+  if (wind >= 7)  chips.push("🧥 바람막이");
+  if (uv >= 7)    chips.push("🧴 선크림/모자");
+
   const uniq = Array.from(new Set(chips)).slice(0,3);
+
+  return {
+    tempPhrase, humidityPhrase, chips: uniq,
+    noon: { rain, wind, uv, dp }
+  };
+}
+
+function render(){
+  const { today, tomorrow, yesterday } = getDates();
+  const td = state.data.td; const y = state.data.y;
+
+  const todayArr = pickDayArrays(td, today);
+  const tomorrowArr = pickDayArrays(td, tomorrow);
+  const yesterdayTemps = y.hourly.temperature_2m;
+
+  // headline + chips + cards
+  let h, refLabel;
+  if (state.view === 'today'){
+    h = headlineAndChips(todayArr, { t: yesterdayTemps });
+    refLabel = "오늘은 어제보다";
+  }else{
+    h = headlineAndChips(tomorrowArr, todayArr);
+    refLabel = "내일은 오늘보다";
+  }
+  document.getElementById('headline').textContent = `${refLabel} ${h.tempPhrase}. ${h.humidityPhrase} ☀`;
+
   const chipsEl = document.getElementById('chips'); chipsEl.innerHTML = "";
-  uniq.forEach((t,i)=>{
+  h.chips.forEach((t,i)=>{
     const d = document.createElement('div');
     d.className = 'chip' + (i===0?' active':'');
     d.textContent = t; chipsEl.appendChild(d);
   });
 
-  // 카드
-  document.getElementById('rainCard').textContent = `강수: ${Math.round(noon.rain ?? 0)}%`;
-  document.getElementById('windCard').textContent = `바람: ${(noon.wind ?? 0).toFixed(1)} m/s`;
-  document.getElementById('uvCard').textContent   = `UV: ${Math.round(noon.uv ?? 0)} (정오)`;
+  document.getElementById('rainCard').textContent = `강수: ${Math.round(h.noon.rain ?? 0)}%`;
+  document.getElementById('windCard').textContent = `바람: ${(h.noon.wind ?? 0).toFixed(1)} m/s`;
+  document.getElementById('uvCard').textContent   = `UV: ${Math.round(h.noon.uv ?? 0)} (정오)`;
+  const dp = h.noon.dp ?? 0;
   const dpText = (dp>=24)?'매우 습함':(dp>=22)?'꽤 습함':(dp>=19)?'살짝 습함':'상쾌함';
-  document.getElementById('humidCard').textContent= `습기(이슬점): ${dpText} · ${(dp??0).toFixed(1)}°C`;
+  document.getElementById('humidCard').textContent= `습기(이슬점): ${dpText} · ${dp?dp.toFixed(1):'0.0'}°C`;
 
-  // 그래프
-  drawChart(hours, yestTemps, todayTemps);
+  // 미니멀 그래프: 4구간, 카테고리 0~3
+  const yestArr = yesterdayTemps;
+  const tToday = todayArr.t, tTomo = tomorrowArr.t;
+
+  function ySeriesFrom(arr){
+    const ys = buckets.map(b => avgBucket(arr, b)).map(tempBand);
+    return ys;
+  }
+
+  let s1, s2, labels = ["아침","점심","저녁","밤"];
+  if (state.view === 'today'){
+    s1 = ySeriesFrom(yestArr); s2 = ySeriesFrom(tToday);
+  } else {
+    s1 = ySeriesFrom(tToday);  s2 = ySeriesFrom(tTomo);
+  }
+
+  drawMinimalChart(labels, s1, s2);
 }
 
-function drawChart(hours, yest, today){
+function drawMinimalChart(labels, y1, y2){
   const ctx = document.getElementById('weatherChart');
-  const nowHour = new Date().getHours();
-  const nowLinePlugin = {
-    id:'nowLine',
+  const now = new Date(); let idxNow = 3;
+  const h = now.getHours();
+  if (h>=6 && h<=9) idxNow = 0; else if (h>=12 && h<=15) idxNow = 1; else if (h>=18 && h<=21) idxNow = 2;
+
+  const nowDotPlugin = {
+    id:'nowDot',
     afterDatasetsDraw(chart){
-      const {ctx, chartArea:{top,bottom}, scales:{x}} = chart;
-      const pos = x.getPixelForValue(nowHour);
-      ctx.save(); ctx.lineWidth=1.5; ctx.strokeStyle='red'; ctx.setLineDash([4,4]);
-      ctx.beginPath(); ctx.moveTo(pos, top); ctx.lineTo(pos, bottom); ctx.stroke(); ctx.restore();
+      const {ctx, chartArea:{top,bottom}, scales:{x,y}} = chart;
+      const xPos = x.getPixelForValue(idxNow);
+      ctx.save(); ctx.fillStyle='red'; ctx.beginPath(); ctx.arc(xPos, (top+bottom)/2, 3, 0, Math.PI*2); ctx.fill(); ctx.restore();
     }
   };
+
   if (window.__jigiChart){ window.__jigiChart.destroy(); }
   window.__jigiChart = new Chart(ctx, {
     type:'line',
     data:{
-      labels: hours,
+      labels,
       datasets:[
-        { label:'어제', data:yest, tension:0.3, borderColor:'#B0BEC5', pointRadius:0 },
-        { label:'오늘', data:today, tension:0.3, borderColor:getComputedStyle(document.documentElement).getPropertyValue('--primary').trim(), pointRadius:0 }
+        { label:'기준', data:y1, tension:0.3, borderColor:'#B0BEC5', pointRadius:2 },
+        { label:'비교', data:y2, tension:0.3, borderColor:getComputedStyle(document.documentElement).getPropertyValue('--primary').trim(), pointRadius:3 }
       ]
     },
     options:{
       responsive:true, maintainAspectRatio:false,
       plugins:{ legend:{ display:false } },
       layout:{ padding:{ left:8, right:8, top:4, bottom:0 } },
-      scales:{ x:{ grid:{ display:false }, ticks:{ maxTicksLimit:9 } },
-               y:{ grid:{ color:'#ECEFF1' }, ticks:{ callback:(v)=>v+'°' } } },
+      scales:{
+        x:{ grid:{ display:false } },
+        y:{
+          min:0, max:3, grid:{ display:false },
+          ticks:{ callback:(v)=> v===0?"춥다":(v===3?"더움":""), maxTicksLimit:2 }
+        }
+      },
       animation:false
     },
-    plugins:[nowLinePlugin]
+    plugins:[nowDotPlugin]
   });
 }
 
-// 위치 처리
+// 위치
 async function init(lat, lon, label=""){
   document.getElementById('locLabel').textContent = label || `위치: ${lat.toFixed(3)}, ${lon.toFixed(3)}`;
   try{
-    const { todayJson, yestJson } = await fetchWeather(lat, lon);
-    buildFromData(todayJson, yestJson);
+    const { td, y } = await fetchWeather(lat, lon);
+    build(td, y);
   }catch(e){
-    toast("데이터를 불러오지 못했어요. 네트워크를 확인해주세요.");
+    const el = document.getElementById('headline');
+    el.textContent = "데이터를 불러오지 못했어요. 네트워크를 확인해주세요.";
     console.error(e);
   }
 }
@@ -279,21 +317,28 @@ function useGeolocation(){
     return;
   }
   navigator.geolocation.getCurrentPosition(
-    (pos)=>{
-      const { latitude:lat, longitude:lon } = pos.coords;
-      init(lat, lon);
-    },
-    (err)=>{
-      toast("위치 권한이 없어 서울로 보여드릴게요.");
-      init(37.5665, 126.9780, "서울(기본)");
-    },
+    (pos)=>{ const { latitude:lat, longitude:lon } = pos.coords; init(lat, lon); },
+    (err)=>{ toast("위치 권한이 없어 서울로 보여드릴게요."); init(37.5665, 126.9780, "서울(기본)"); },
     { enableHighAccuracy:false, timeout:8000, maximumAge:300000 }
   );
 }
 
-// 버튼
+// 토글
+document.getElementById('tgToday').addEventListener('click', ()=>{
+  state.view='today';
+  document.getElementById('tgToday').classList.add('active');
+  document.getElementById('tgTomorrow').classList.remove('active');
+  render();
+});
+document.getElementById('tgTomorrow').addEventListener('click', ()=>{
+  state.view='tomorrow';
+  document.getElementById('tgTomorrow').classList.add('active');
+  document.getElementById('tgToday').classList.remove('active');
+  render();
+});
+
+// 새로고침
 document.getElementById('btnRefresh').addEventListener('click', ()=> useGeolocation());
-document.getElementById('btnUseSeoul').addEventListener('click', ()=> init(37.5665, 126.9780, "서울(기본)"));
 
 // 시작
 useGeolocation();
