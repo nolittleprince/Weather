@@ -1,501 +1,129 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-  <title>yestodmorrow kk — gentle compare</title>
+  <meta charset="UTF-8">
+  <title>JIGI v0.4</title>
   <style>
-    :root{
-      --bg:#ffffff; --fg:#0b1020; --muted:#6b7280; --line:#e6e9ef; --card:#f8fafc;
-      --accent:#2563eb; --good:#10b981; --warn:#ef4444;
-      --chip:#eef2ff; --chipText:#374151;
+    body {
+      margin: 0; font-family: Pretendard, sans-serif;
+      background: #FFFFFF; color: #424242;
+      display: flex; flex-direction: column; align-items: center;
     }
-    *{box-sizing:border-box}
-    html,body{height:100%;margin:0}
-    body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,"Apple SD Gothic Neo","Noto Sans KR","Noto Sans JP",sans-serif;background:var(--bg);color:var(--fg)}
-    .wrap{height:100vh;display:grid;grid-template-rows:auto 1fr auto;max-width:780px;margin:0 auto;padding:14px;gap:10px}
-    header,footer{display:flex;align-items:center;justify-content:space-between}
-    header .brand{display:flex;align-items:center;gap:8px}
-    .badge{border:1px solid var(--line);padding:2px 8px;border-radius:999px;font-size:12px;color:var(--accent)}
-    .loc{font-weight:700}
-    .muted{color:var(--muted)}
-    .small{font-size:12px}
-    .btn{border:1px solid var(--line);background:#fff;padding:6px 10px;border-radius:8px;font-size:12px;cursor:pointer}
-    .lang button{border:1px solid var(--line);background:#fff;padding:6px 10px;border-radius:999px;font-size:12px;margin-left:6px;cursor:pointer}
-    .lang button.active{border-color:var(--accent);color:var(--accent);font-weight:700}
-    main{display:grid;grid-template-rows:auto auto auto 1fr;gap:10px;overflow:auto}
-    .headline{border:1px solid var(--line);border-radius:12px;padding:12px;background:#fff;font-size:16px;line-height:1.5}
-    .chips{display:flex;gap:8px;flex-wrap:wrap}
-    .chip{background:var(--chip); color:var(--chipText); padding:4px 10px; border-radius:999px; font-size:12px; border:1px solid #e5e7eb}
-    .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
-    .slot{border:1px dashed var(--line);border-radius:12px;padding:10px;background:#fff}
-    .slot h4{margin:0 0 6px 0;font-size:12px;color:var(--muted)}
-    .slot .line{font-size:14px}
-    .cards{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-    .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:6px}
-    .card h3{margin:0 0 2px 0;font-size:12px;color:var(--muted);font-weight:700}
-    .big{font-size:22px;font-weight:800}
-    .row{display:flex;justify-content:space-between;font-size:13px}
-    .tips{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-    .pill{border:1px solid var(--line);background:#fff;padding:6px 10px;border-radius:999px;font-size:12px}
-    footer .right{display:flex;align-items:center;gap:8px}
-    a { color: inherit; }
+    header { text-align: center; padding: 16px; }
+    h1 { margin: 0; font-size: 24px; color: #1976D2; }
+    .headline { font-size: 18px; margin: 8px 0; color: #424242; }
+    .slogan { font-size: 14px; color: #666; }
+    .chips { display: flex; gap: 8px; margin: 12px 0; }
+    .chip {
+      padding: 6px 12px; border-radius: 16px; background: #B0BEC5;
+      color: white; font-size: 14px;
+    }
+    .chip.active { background: #1976D2; }
+    #chart-container { width: 90%; height: 200px; margin: 12px 0; }
+    .cards { display: flex; gap: 8px; margin: 12px 0; }
+    .card {
+      flex: 1; padding: 8px; border-radius: 8px;
+      background: #F5F5F5; text-align: center;
+      font-size: 14px;
+    }
+    .section { width: 90%; margin: 12px 0; }
+    .banner { width: 100%; height: 60px; background: #CCC; text-align: center; line-height: 60px; margin-top: auto; }
   </style>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-  <div class="wrap">
-    <header>
-      <div class="brand">
-        <span class="badge">yestodmorrow kk</span>
-        <div>
-          <div class="loc" id="locText">Seoul</div>
-          <div class="muted small" id="timeText"></div>
-        </div>
-      </div>
-      <div style="display:flex;align-items:center;gap:6px">
-        <button class="btn" id="locBtn">📍 위치 재설정</button>
-        <div class="lang">
-          <button data-lang="ko" class="active">KO</button>
-          <button data-lang="en">EN</button>
-          <button data-lang="ja">JA</button>
-        </div>
-      </div>
-    </header>
+  <header>
+    <h1>JIGI</h1>
+    <div class="headline" id="headline">오늘은 어제보다 조금 더 포근해요 ☀</div>
+    <div class="slogan">Compared to yesterday</div>
+  </header>
 
-    <!-- Warm friendly headlines -->
-    <div class="headline" id="headline1">오늘 느낌을 계산 중이에요…</div>
-    <div class="headline" id="headline2">내일 기분도 살짝 예측해볼게요…</div>
+  <div class="chips" id="chips"></div>
 
-    <!-- Moved up: time slots summary (Today first; Tomorrow preview under each) -->
-    <div class="grid3">
-      <div class="slot">
-        <h4 id="amLbl">아침(6–9)</h4>
-        <div class="line" id="amLine">—</div>
-        <div class="chips" id="amChips"></div>
-        <div class="small muted" id="amTom">내일: —</div>
-      </div>
-      <div class="slot">
-        <h4 id="noonLbl">점심(12–15)</h4>
-        <div class="line" id="noonLine">—</div>
-        <div class="chips" id="noonChips"></div>
-        <div class="small muted" id="noonTom">내일: —</div>
-      </div>
-      <div class="slot">
-        <h4 id="eveLbl">저녁(18–21)</h4>
-        <div class="line" id="eveLine">—</div>
-        <div class="chips" id="eveChips"></div>
-        <div class="small muted" id="eveTom">내일: —</div>
-      </div>
-    </div>
-
-    <!-- Smaller detail cards -->
-    <div class="cards">
-      <div class="card">
-        <h3 id="yTitle">어제 이 시간</h3>
-        <div class="big" id="yTemp">—</div>
-        <div class="row"><span id="yRainLbl">강수</span><span id="yRain">—</span></div>
-        <div class="row"><span id="yWindLbl">바람</span><span id="yWind">—</span></div>
-      </div>
-      <div class="card">
-        <h3 id="tTitle">오늘 지금</h3>
-        <div class="big" id="tTemp">—</div>
-        <div class="chips" id="nowChips"></div>
-        <div class="row"><span id="tRainLbl">강수</span><span id="tRain">—</span></div>
-        <div class="row"><span id="tWindLbl">바람</span><span id="tWind">—</span></div>
-      </div>
-    </div>
-
-    <footer>
-      <div class="tips">
-        <span class="pill" id="tip1">☂ 우산 필요 없음</span>
-        <span class="pill" id="tip2">🧥 겉옷 선택</span>
-        <span class="pill" id="tip3">☀ 자외선 주의</span>
-      </div>
-      <div class="right small muted">Data: Open-Meteo • v0.3 (friendly)</div>
-    </footer>
+  <div id="chart-container">
+    <canvas id="weatherChart"></canvas>
   </div>
 
-  <script>
-    // === 쉬운 용어 ===
-    // API: 데이터를 주는 서버 주소. fetch(): 그 데이터를 가져오는 명령.
-    // JSON: 서버가 보내는 표 형태의 텍스트.
-    // timezone=auto: 현지 시간으로 자동 변환.
+  <div class="cards">
+    <div class="card" id="rainCard">강수: 20%</div>
+    <div class="card" id="windCard">바람: 3m/s</div>
+    <div class="card" id="uvCard">UV: 보통</div>
+  </div>
 
-    const texts = {
-      ko: {
-        yTitle: "어제 이 시간", tTitle: "오늘 지금",
-        am: "아침(6–9)", noon: "점심(12–15)", eve: "저녁(18–21)",
-        rain: "강수", wind: "바람",
-        // 친절한 헤드라인 문구
-        warmToday: (tempTone, rainTone, windTone)=> {
-          const bits = [];
-          if (tempTone==='warmer') bits.push("오늘은 어제보다 조금 더 따뜻해요");
-          else if (tempTone==='cooler') bits.push("오늘은 어제보다 살짝 서늘해요");
-          else bits.push("오늘은 어제와 느낌이 비슷해요");
-          if (rainTone==='more') bits.push("비 소식이 조금 더 있어요");
-          else if (rainTone==='less') bits.push("비 걱정은 덜해요");
-          if (windTone==='more') bits.push("바람은 오늘이 좀 더 도드라져요");
-          if (windTone==='less') bits.push("바람은 오늘이 한결 잦아요");
-          bits.push("가벼운 하루가 되길 바랄게요 ☕");
-          return bits.join(" · ");
-        },
-        warmTomorrow: (tempTone, rainTone)=> {
-          const bits = [];
-          if (tempTone==='warmer') bits.push("내일은 오늘보다 더 포근할 듯해요");
-          else if (tempTone==='cooler') bits.push("내일은 오늘보다 조금 더 선선해질 거예요");
-          else bits.push("내일도 오늘과 비슷한 느낌이에요");
-          if (rainTone==='more') bits.push("우산을 살짝 챙겨두면 든든하겠어요");
-          else if (rainTone==='less') bits.push("비 걱정은 오늘보다 줄어들겠어요");
-          return bits.join(" · ");
-        },
-        chips: {
-          warmer: "더 따뜻", cooler: "서늘", same: "비슷",
-          rainHigh: "비 가능성 높음", rainMid: "비 가능성 보통", rainLow: "비 가능성 낮음",
-          windHigh: "바람 강함", windMid: "바람 보통", windLow: "바람 약함"
-        },
-        tips: { noUmb:"☂ 우산 필요 없음", takeUmb:"☂ 우산 챙기기", outerMaybe:"🧥 겉옷 선택", outerNeed:"🧥 겉옷 필요", uv:"☀ 자외선 주의" },
-        resetLoc:"📍 위치 재설정",
-        loading1:"오늘 느낌을 계산 중이에요…",
-        loading2:"내일 기분도 살짝 예측해볼게요…"
-      },
-      en: {
-        yTitle: "This hour yesterday", tTitle: "Now today",
-        am: "Morning (6–9)", noon: "Noon (12–15)", eve: "Evening (18–21)",
-        rain: "Precip", wind: "Wind",
-        warmToday: (tempTone, rainTone, windTone)=> {
-          const bits = [];
-          if (tempTone==='warmer') bits.push("Today feels a touch warmer than yesterday");
-          else if (tempTone==='cooler') bits.push("Today feels a bit cooler than yesterday");
-          else bits.push("Today feels about the same as yesterday");
-          if (rainTone==='more') bits.push("Slightly higher chance of rain");
-          else if (rainTone==='less') bits.push("Less worry about rain");
-          if (windTone==='more') bits.push("A bit breezier today");
-          if (windTone==='less') bits.push("Winds look calmer");
-          bits.push("Hope your day feels gentle ☕");
-          return bits.join(" · ");
-        },
-        warmTomorrow: (tempTone, rainTone)=> {
-          const bits = [];
-          if (tempTone==='warmer') bits.push("Tomorrow looks warmer than today");
-          else if (tempTone==='cooler') bits.push("Tomorrow may feel a little cooler");
-          else bits.push("Tomorrow should feel similar to today");
-          if (rainTone==='more') bits.push("An umbrella might be handy");
-          else if (rainTone==='less') bits.push("Less chance of rain than today");
-          return bits.join(" · ");
-        },
-        chips: {
-          warmer: "warmer", cooler: "cooler", same: "similar",
-          rainHigh: "rain likely", rainMid: "rain possible", rainLow: "rain low",
-          windHigh: "windy", windMid: "breezy", windLow: "calm"
-        },
-        tips: { noUmb:"☂ No umbrella", takeUmb:"☂ Take umbrella", outerMaybe:"🧥 Light layer", outerNeed:"🧥 Bring a jacket", uv:"☀ UV caution" },
-        resetLoc:"📍 Reset location",
-        loading1:"Crunching today's feel…",
-        loading2:"Peeking at tomorrow…"
-      },
-      ja: {
-        yTitle: "昨日のこの時間", tTitle: "今日・今",
-        am: "朝(6–9)", noon: "昼(12–15)", eve: "夕(18–21)",
-        rain: "降水", wind: "風",
-        warmToday: (tempTone, rainTone, windTone)=> {
-          const bits = [];
-          if (tempTone==='warmer') bits.push("今日は昨日より少し暖かく感じそう");
-          else if (tempTone==='cooler') bits.push("今日は昨日より少し涼しく感じそう");
-          else bits.push("今日は昨日と体感がほぼ同じ");
-          if (rainTone==='more') bits.push("雨の可能性はやや高め");
-          else if (rainTone==='less') bits.push("雨の心配は少なめ");
-          if (windTone==='more') bits.push("風は少し強め");
-          if (windTone==='less') bits.push("風は落ち着きそう");
-          bits.push("穏やかな一日になりますように ☕");
-          return bits.join("・");
-        },
-        warmTomorrow: (tempTone, rainTone)=> {
-          const bits = [];
-          if (tempTone==='warmer') bits.push("明日は今日より暖かくなりそう");
-          else if (tempTone==='cooler') bits.push("明日は今日より少し涼しそう");
-          else bits.push("明日も今日と同じくらい");
-          if (rainTone==='more') bits.push("傘があると安心");
-          else if (rainTone==='less') bits.push("雨の心配は今日より少なめ");
-          return bits.join("・");
-        },
-        chips: {
-          warmer: "暖かい", cooler: "涼しい", same: "ほぼ同じ",
-          rainHigh: "雨 可能性高い", rainMid: "雨 可能性あり", rainLow: "雨 低い",
-          windHigh: "風 強め", windMid: "風 やや", windLow: "風 弱い"
-        },
-        tips: { noUmb:"☂ 傘不要", takeUmb:"☂ 傘を持つ", outerMaybe:"🧥 上着お好みで", outerNeed:"🧥 上着が必要", uv:"☀ 紫外線注意" },
-        resetLoc:"📍 再設定",
-        loading1:"今日の体感を計算中…",
-        loading2:"明日の気配をのぞき見…"
-      }
-    };
+  <div class="section">
+    <h3>오늘 기록</h3>
+    <textarea id="note" placeholder="오늘의 착장을 메모하세요" rows="2" style="width:100%;"></textarea><br>
+    <button onclick="saveNote('good')">편했어요</button>
+    <button onclick="saveNote('bad')">불편했어요</button>
+  </div>
 
-    let LANG='ko';
-    const $ = (id)=>document.getElementById(id);
-    const ui = {
-      locText:$("locText"), timeText:$("timeText"),
-      headline1:$("headline1"), headline2:$("headline2"),
-      yTitle:$("yTitle"), tTitle:$("tTitle"),
-      yTemp:$("yTemp"), yRain:$("yRain"), yWind:$("yWind"),
-      tTemp:$("tTemp"), tRain:$("tRain"), tWind:$("tWind"),
-      amLbl:$("amLbl"), noonLbl:$("noonLbl"), eveLbl:$("eveLbl"),
-      amLine:$("amLine"), noonLine:$("noonLine"), eveLine:$("eveLine"),
-      amChips:$("amChips"), noonChips:$("noonChips"), eveChips:$("eveChips"),
-      amTom:$("amTom"), noonTom:$("noonTom"), eveTom:$("eveTom"),
-      tip1:$("tip1"), tip2:$("tip2"), tip3:$("tip3"),
-      locBtn:$("locBtn")
-    };
+  <div class="section">
+    <h3>특파원 멘트 공간</h3>
+    <div style="background:#EEE; height:40px; display:flex; align-items:center; justify-content:center;">(전광판 placeholder)</div>
+  </div>
 
-    document.querySelectorAll('.lang button').forEach(btn=>{
-      btn.addEventListener('click',()=>{
-        document.querySelectorAll('.lang button').forEach(b=>b.classList.remove('active'));
-        btn.classList.add('active');
-        LANG = btn.dataset.lang;
-        renderTextsOnly();
-      });
-    });
+  <div class="banner">Ad banner</div>
 
-    ui.locBtn.addEventListener('click', ()=>{
-      navigator.geolocation.getCurrentPosition(async pos=>{
-        await loadAll(pos.coords.latitude, pos.coords.longitude);
-      }, async err=>{
-        alert(LANG==='ko'?'위치 권한 실패. 서울로 표시합니다.':LANG==='ja'?'位置情報の許可に失敗しました。ソウルを表示します。':'Location permission failed. Falling back to Seoul.');
-        await loadAll(37.5665,126.9780);
-      }, {enableHighAccuracy:false, timeout:4000});
-    });
+<script>
+// 더미 데이터: 어제/오늘 시간대별 온도
+const hours = Array.from({length: 25}, (_, i) => i);
+const yesterdayTemps = hours.map(h => 15 + Math.sin(h/24*2*Math.PI)*3);
+const todayTemps = hours.map(h => 18 + Math.sin(h/24*2*Math.PI)*4);
+const nowHour = new Date().getHours();
 
-    // ====== 유틸 ======
-    function toneDelta(d){ if (d==null) return 'same'; if (Math.abs(d)<1) return 'same'; return d>0?'warmer':'cooler'; }
-    function rainTone(pop){ if (pop==null) return 'rainMid'; if (pop>=60) return 'rainHigh'; if (pop<=25) return 'rainLow'; return 'rainMid'; }
-    function windTone(w){ if (w==null) return 'windMid'; if (w>=7) return 'windHigh'; if (w<=3) return 'windLow'; return 'windMid'; }
-    function fmtTemp(v){ return (v!=null && isFinite(v)) ? `${Math.round(v)}°C` : '—'; }
-    function fmtPop(v){ if (v==null || !isFinite(v)) return '—'; return `${Math.round(v)}%`; }
-    function fmtMm(v){ if (v==null || !isFinite(v)) return '—'; if (v < 0.1) return '0 mm'; return `${(Math.round(v*10)/10).toFixed(1)} mm`; }
-    function avgForHours(values, times, dateBase, hours){
-      const y = dateBase.getFullYear();
-      const m = (dateBase.getMonth()+1).toString().padStart(2,'0');
-      const d = dateBase.getDate().toString().padStart(2,'0');
-      const prefix = `${y}-${m}-${d}T`;
-      let acc=0, cnt=0;
-      for (const h of hours){
-        const key = `${prefix}${h.toString().padStart(2,'0')}:00`;
-        const idx = times.indexOf(key);
-        if (idx>=0 && values[idx]!=null){ acc += values[idx]; cnt++; }
-      }
-      return cnt? acc/cnt : null;
-    }
+// 그래프
+const ctx = document.getElementById('weatherChart').getContext('2d');
+new Chart(ctx, {
+  type: 'line',
+  data: {
+    labels: hours,
+    datasets: [
+      { label: '어제', data: yesterdayTemps, borderColor: '#B0BEC5', fill: false },
+      { label: '오늘', data: todayTemps, borderColor: '#1976D2', fill: false }
+    ]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: { y: { beginAtZero: false } },
+    animation: false
+  }
+});
 
-    // ====== 상태 ======
-    let ST = {
-      lat: 37.5665, lon: 126.9780,
-      locName: 'Seoul',
-      now: new Date(),
-      time: [],
-      series: null,
-      today: null, yesterday: null, tomorrow: null
-    };
+// 현재시간 라인 수동 표시 (Chart.js plugin 대신 간단히)
+const canvas = document.getElementById('weatherChart');
+const ctx2 = canvas.getContext('2d');
+canvas.addEventListener('mousemove', () => {}); // force context init
+setTimeout(() => {
+  ctx2.strokeStyle = 'red';
+  ctx2.beginPath();
+  ctx2.moveTo((nowHour/24)*canvas.width, 0);
+  ctx2.lineTo((nowHour/24)*canvas.width, canvas.height);
+  ctx2.stroke();
+}, 500);
 
-    async function reverseGeocode(lat, lon){
-      try{
-        const url = `https://geocoding-api.open-meteo.com/v1/reverse?latitude=${lat}&longitude=${lon}&language=${LANG}&format=json`;
-        const r = await fetch(url); const j = await r.json();
-        if (j && j.results && j.results.length){
-          const top = j.results[0];
-          const parts = [top.city || top.name, top.admin1, top.country_code].filter(Boolean);
-          return parts.join(', ');
-        }
-      }catch(e){}
-      return 'Unknown';
-    }
+// TipChips 로직 (더미)
+const chips = [
+  { text: "🧥 가벼운 겉옷", active: true },
+  { text: "☂ 우산", active: false },
+  { text: "🧴 선크림", active: false }
+];
+const chipContainer = document.getElementById('chips');
+chips.forEach(c => {
+  const div = document.createElement('div');
+  div.className = 'chip' + (c.active ? ' active' : '');
+  div.textContent = c.text;
+  chipContainer.appendChild(div);
+});
 
-    function summarizeForDate(dateObj){
-      const H = ST.series; const time = ST.time;
-      const slots = { am:[6,7,8,9], noon:[12,13,14,15], eve:[18,19,20,21] };
-      const out = {};
-      for (const [key, hours] of Object.entries(slots)){
-        out[key] = {
-          temp: avgForHours(H.temp, time, dateObj, hours),
-          feels: avgForHours(H.feels, time, dateObj, hours),
-          pop: avgForHours(H.pop, time, dateObj, hours),
-          rain: avgForHours(H.rain, time, dateObj, hours),
-          wind: avgForHours(H.wind, time, dateObj, hours),
-        };
-      }
-      // now: 같은 날짜에서 현재시각과 가장 가까운 값 1개
-      let bestIdx=-1,best=1e9;
-      for (let i=0;i<time.length;i++){
-        const t = new Date(time[i]);
-        if (t.toDateString()!==dateObj.toDateString()) continue;
-        const diff = Math.abs(t.getTime()-ST.now.getTime());
-        if (diff<best){best=diff; bestIdx=i;}
-      }
-      out.now = {
-        temp: bestIdx>=0? H.temp[bestIdx] : null,
-        feels: bestIdx>=0? H.feels[bestIdx] : null,
-        pop: bestIdx>=0? H.pop[bestIdx] : null,
-        rain: bestIdx>=0? H.rain[bestIdx] : null,
-        wind: bestIdx>=0? H.wind[bestIdx] : null,
-      };
-      return out;
-    }
-
-    async function loadAll(lat, lon){
-      ST.lat = lat; ST.lon = lon; ST.now = new Date();
-
-      ui.headline1.textContent = texts[LANG].loading1;
-      ui.headline2.textContent = texts[LANG].loading2;
-
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}`+
-        `&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,wind_speed_10m`+
-        `&past_days=1&forecast_days=2&timezone=auto`;
-      const res = await fetch(url);
-      const f = await res.json();
-
-      ST.time = f.hourly.time;
-      ST.series = {
-        temp: f.hourly.temperature_2m,
-        feels: f.hourly.apparent_temperature,
-        pop: f.hourly.precipitation_probability,
-        rain: f.hourly.precipitation,
-        wind: f.hourly.wind_speed_10m
-      };
-
-      const now = ST.now;
-      const yday = new Date(now.getTime()-24*60*60*1000);
-      const tmr = new Date(now.getTime()+24*60*60*1000);
-
-      ST.yesterday = summarizeForDate(yday);
-      ST.today = summarizeForDate(now);
-      ST.tomorrow = summarizeForDate(tmr);
-
-      ST.locName = await reverseGeocode(lat, lon);
-      renderAll();
-    }
-
-    function chip(el, text){
-      const span = document.createElement('span');
-      span.className = 'chip';
-      span.textContent = text;
-      el.appendChild(span);
-    }
-
-    function renderTextsOnly(){
-      // labels
-      ui.yTitle.textContent = texts[LANG].yTitle;
-      ui.tTitle.textContent = texts[LANG].tTitle;
-      ui.amLbl.textContent = texts[LANG].am;
-      ui.noonLbl.textContent = texts[LANG].noon;
-      ui.eveLbl.textContent = texts[LANG].eve;
-      ui.locBtn.textContent = texts[LANG].resetLoc;
-
-      // friendly headlines
-      if (ST.today && ST.yesterday){
-        const dT = (ST.today.now?.feels ?? ST.today.now?.temp) - (ST.yesterday.now?.feels ?? ST.yesterday.now?.temp);
-        const tempTone = toneDelta(dT);
-        const rainTone = (ST.today.now?.pop ?? 0) - (ST.yesterday.now?.pop ?? 0);
-        const windDiff = (ST.today.now?.wind ?? 0) - (ST.yesterday.now?.wind ?? 0);
-        ui.headline1.textContent = texts[LANG].warmToday(
-          tempTone,
-          Math.abs(rainTone)<10? 'same' : (rainTone>0?'more':'less'),
-          Math.abs(windDiff)<1.5? 'same' : (windDiff>0?'more':'less')
-        );
-      }
-      if (ST.tomorrow && ST.today){
-        const dT2 = (ST.tomorrow.now?.feels ?? ST.tomorrow.now?.temp) - (ST.today.now?.feels ?? ST.today.now?.temp);
-        const tempTone2 = toneDelta(dT2);
-        const rainTone2 = (ST.tomorrow.now?.pop ?? 0) - (ST.today.now?.pop ?? 0);
-        ui.headline2.textContent = texts[LANG].warmTomorrow(
-          tempTone2,
-          Math.abs(rainTone2)<10? 'same' : (rainTone2>0?'more':'less')
-        );
-      }
-
-      ui.locText.textContent = ST.locName || 'Unknown';
-      ui.timeText.textContent = new Date().toLocaleString();
-
-      renderBody();
-      renderTips();
-    }
-
-    function renderBody(){
-      // detail cards (smaller)
-      ui.yTemp.textContent = fmtTemp(ST.yesterday.now?.feels ?? ST.yesterday.now?.temp);
-      ui.yRain.textContent = (ST.yesterday.now?.pop!=null) ? fmtPop(ST.yesterday.now.pop) : fmtMm(ST.yesterday.now?.rain);
-      ui.yWind.textContent = (ST.yesterday.now?.wind!=null) ? `${Math.round(ST.yesterday.now.wind)} m/s` : '—';
-
-      ui.tTemp.textContent = fmtTemp(ST.today.now?.feels ?? ST.today.now?.temp);
-      ui.tRain.textContent = (ST.today.now?.pop!=null) ? fmtPop(ST.today.now.pop) : fmtMm(ST.today.now?.rain);
-      ui.tWind.textContent = (ST.today.now?.wind!=null) ? `${Math.round(ST.today.now.wind)} m/s` : '—';
-
-      // chips (qualitative)
-      ui.nowChips.innerHTML = '';
-      const tempTone = toneDelta((ST.today.now?.feels ?? ST.today.now?.temp) - (ST.yesterday.now?.feels ?? ST.yesterday.now?.temp));
-      chip(ui.nowChips, texts[LANG].chips[tempTone]);
-      const rainT = rainTone(ST.today.now?.pop);
-      chip(ui.nowChips, texts[LANG].chips[rainT]);
-      const windT = windTone(ST.today.now?.wind);
-      chip(ui.nowChips, texts[LANG].chips[windT]);
-
-      // slots (today) + tomorrow preview
-      function slotLine(y, t){
-        const labelT = toneDelta((t?.feels ?? t?.temp) - (y?.feels ?? y?.temp));
-        const rainTxt = (t?.pop!=null) ? `${fmtPop(t.pop)}` : `${fmtMm(t?.rain)}`;
-        return `${texts[LANG].chips[labelT]} · ${rainTxt}`;
-      }
-      ui.amLine.textContent = slotLine(ST.yesterday.am, ST.today.am);
-      ui.noonLine.textContent = slotLine(ST.yesterday.noon, ST.today.noon);
-      ui.eveLine.textContent = slotLine(ST.yesterday.eve, ST.today.eve);
-
-      // chips per slot (today)
-      function slotChips(el, t){
-        el.innerHTML='';
-        chip(el, texts[LANG].chips[toneDelta((t?.feels ?? t?.temp) -  (ST.yesterday?.[el.id.replace('Chips','')]?.feels ?? ST.yesterday?.[el.id.replace('Chips','')]?.temp))] || texts[LANG].chips.same);
-        chip(el, texts[LANG].chips[rainTone(t?.pop)]);
-        chip(el, texts[LANG].chips[windTone(t?.wind)]);
-      }
-      slotChips(ui.amChips, ST.today.am);
-      slotChips(ui.noonChips, ST.today.noon);
-      slotChips(ui.eveChips, ST.today.eve);
-
-      function tomLine(t, tm){
-        const labelT = toneDelta((tm?.feels ?? tm?.temp) - (t?.feels ?? t?.temp));
-        const rainTxt = (tm?.pop!=null) ? `${fmtPop(tm.pop)}` : `${fmtMm(tm?.rain)}`;
-        return (LANG==='en'?'Tomorrow: ':(LANG==='ja'?'明日: ':'내일: ')) + `${texts[LANG].chips[labelT]} · ${rainTxt}`;
-      }
-      ui.amTom.textContent = tomLine(ST.today.am, ST.tomorrow.am);
-      ui.noonTom.textContent = tomLine(ST.today.noon, ST.tomorrow.noon);
-      ui.eveTom.textContent = tomLine(ST.today.eve, ST.tomorrow.eve);
-    }
-
-    function renderTips(){
-      // very simple tips for today
-      const umbrella = (ST.today.morning?.pop ?? 0) > 60 || (ST.today.noon?.pop ?? 0) > 60 || (ST.today.eve?.pop ?? 0) > 60 || (ST.today.now?.pop ?? 0) > 60;
-      const jacket = (ST.today.morning?.feels ?? 20) < 18 || (ST.today.eve?.feels ?? 20) < 18;
-      ui.tip1.textContent = umbrella ? texts[LANG].tips.takeUmb : texts[LANG].tips.noUmb;
-      ui.tip2.textContent = jacket ? texts[LANG].tips.outerNeed : texts[LANG].tips.outerMaybe;
-      ui.tip3.textContent = texts[LANG].tips.uv;
-    }
-
-    async function start(){
-      try{
-        await new Promise((resolve)=>{
-          navigator.geolocation.getCurrentPosition(async pos=>{
-            resolve(loadAll(pos.coords.latitude, pos.coords.longitude));
-          }, async _=>{
-            await loadAll(37.5665,126.9780); // Seoul
-            resolve();
-          }, {enableHighAccuracy:false, timeout:4000});
-        });
-      }catch(e){
-        await loadAll(37.5665,126.9780);
-      }
-    }
-
-    start().then(()=>{
-      setInterval(()=>{ ui.timeText.textContent = new Date().toLocaleString(); }, 1000*30);
-    });
-
-    function renderAll(){ renderTextsOnly(); }
-  </script>
+// 개인 기록 저장
+function saveNote(feedback) {
+  const note = document.getElementById('note').value;
+  const today = new Date().toISOString().slice(0,10);
+  const data = { note, feedback };
+  localStorage.setItem('jigi_'+today, JSON.stringify(data));
+  alert("오늘 기록이 저장되었습니다!");
+}
+</script>
 </body>
 </html>
